@@ -1,0 +1,124 @@
+body {
+    background-color: rgba(9, 9, 9, 255);
+    /* font-family: unset; */
+}
+
+.e1nzilvr1 {
+    /* 🎥Movie recommendation Web app Using ML class */
+    padding-top: 10vh;
+    text-align: center;
+    color: white;
+    margin: 0;
+    font-size: 50px;
+    font-family: monospace;
+    animation: scale 1s ease-in-out;
+
+}
+@keyframes scale {
+    0% {
+        opacity: 0;
+        font-size: 35px;
+    }
+
+    100% {
+        opacity: 1;
+        font-size: 50px;
+    }
+}
+
+
+.st-emotion-cache-sh2krr p {
+    /* Type or select a movie to get recommendation */
+    color: white;
+    font-size: 20px;
+    overflow: hidden;
+    border-right: .15em solid white;
+    white-space: nowrap;
+    /* Keeps the content on a single line */
+    margin: 0 auto;
+    /* Gives that scrolling effect as the typing happens */
+    letter-spacing: .15em;
+    animation:
+        typing 2s,
+        .75s step-end infinite;
+}
+
+@keyframes typing {
+    from {
+        width: 0%
+    }
+
+    to {
+        width: 100%;
+        border-radius: 0px;
+    }
+}
+
+
+.st-am {
+    /* movies whole block class */
+    padding-top: .5rem;
+}
+
+.st-bb {
+    /* movies names text in search bar class */
+    font-size: 20px;
+}
+
+.block-container {
+    /* Whole box */
+    padding: 0;
+    margin: 0;
+    width: 90vw;
+    height: 200%;
+    /* display: flex;
+    justify-content: center; */
+    text-align: center;
+}
+
+.exotz4b0 {
+    font-family: sans-serif;
+    color: white;
+    font-size: 15px;
+}
+
+.st-emotion-cache-183lzff {
+    padding-bottom: 30px;
+}
+
+.footer p {
+    margin: 0px;
+    padding-top: px;
+    /* z-index: 1; */
+    /* height: 5vh; */
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-image: linear-gradient(90deg, orange, yellow);
+    text-align: center;
+    color: white;
+}
+
+.ezrtsby2 {
+    /* header */
+    background-image: linear-gradient(90deg, orange, yellow);
+    z-index: 1;
+    color: black;
+}
+
+.e115fcil1 img {
+    border-radius: 10px;
+    transition: .2s ease-in-out;
+    width: 100%;
+    height: 100%;
+}
+
+.e115fcil1 img:hover {
+    transform: scale(1.05);
+    transition: .2s ease-in-out;
+}
+
+.erw9t6i1 {
+    padding: 0;
+    margin: 0;
+}
