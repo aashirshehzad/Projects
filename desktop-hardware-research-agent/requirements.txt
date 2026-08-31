@@ -8,3 +8,5 @@ langgraph-checkpoint-postgres>=3.1.0
 psycopg[binary,pool]>=3.2.0
 tavily-python>=0.3.3
 python-dotenv>=1.0.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
