@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "C:\\Users\\Aashir\\anaconda3\\envs\\stockproject\\python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/stock-analysis-agent",
+    "${workspaceFolder}/stock-analysis-agent/app"
+  ]
+}

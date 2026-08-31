@@ -201,6 +201,18 @@ async def event_stream(req: ChatRequest) -> AsyncGenerator[str, None]:
                 if extracted_token:
                     yield f"data: {json.dumps({'type': 'token', 'content': extracted_token})}\n\n"
 
+            # 3. Extract and log token usage metadata directly from LLM completions
+            elif kind == "on_chat_model_end":
+                active_node = raw_node or node or "Agent"
+                try:
+                    usage = event["data"]["output"].usage_metadata
+                    if usage:
+                        in_tok = usage.get("input_tokens", 0)
+                        out_tok = usage.get("output_tokens", 0)
+                        print(f"[TOKEN USAGE] {active_node.capitalize()} | Input: {in_tok} | Output: {out_tok} | Total: {in_tok + out_tok}")
+                except (KeyError, AttributeError):
+                    pass
+
         # Signal successful completion of the entire multi-agent pipeline
         print("--- GRAPH EXECUTION COMPLETE ---")
         yield f"data: {json.dumps({'type': 'done'})}\n\n"

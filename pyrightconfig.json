@@ -1,0 +1,7 @@
+{
+  "pythonPath": "C:\\Users\\Aashir\\anaconda3\\envs\\stockproject\\python.exe",
+  "extraPaths": [
+    "stock-analysis-agent",
+    "stock-analysis-agent/app"
+  ]
+}
