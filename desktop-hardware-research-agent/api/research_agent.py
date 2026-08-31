@@ -7,6 +7,7 @@ constrained by budget, intended use case, target resolution, and conversational 
 """
 
 import os
+import sys
 from typing import Any
 from dotenv import load_dotenv
 
@@ -27,7 +28,10 @@ except (ImportError, AttributeError, Exception):
     create_tool_calling_agent = None  # type: ignore
     AgentExecutor = None  # type: ignore
 
-from state import AgentState
+try:
+    from state import AgentState
+except ImportError:
+    from api.state import AgentState
 
 load_dotenv()
 

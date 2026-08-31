@@ -31,10 +31,21 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
-from state import AgentState
-from research_agent import run_researcher
-from analyst_agent import run_analyst
-from writer_agent import run_writer
+# Ensure directory is on sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if _current_dir not in sys.path:
+    sys.path.insert(0, _current_dir)
+
+try:
+    from state import AgentState
+    from research_agent import run_researcher
+    from analyst_agent import run_analyst
+    from writer_agent import run_writer
+except ImportError:
+    from api.state import AgentState
+    from api.research_agent import run_researcher
+    from api.analyst_agent import run_analyst
+    from api.writer_agent import run_writer
 
 load_dotenv()
 
@@ -165,7 +176,7 @@ def create_graph_builder() -> StateGraph:
     Constructs and returns the StateGraph builder with registered agent nodes and conditional routing:
     START -> Researcher -> (Conditional: Analyst or Writer) -> Writer -> END.
     """
-    builder = StateGraph(AgentState) # type: ignore[type-var]
+    builder = StateGraph(AgentState)  # type: ignore[type-var]
 
     # Register Agent Nodes
     builder.add_node("Researcher", run_researcher)

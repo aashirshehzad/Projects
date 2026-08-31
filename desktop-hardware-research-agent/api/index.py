@@ -1,5 +1,5 @@
 """
-Desktop Hardware AI Researcher - FastAPI Backend Server
+Desktop Hardware AI Researcher - FastAPI Backend Server (Vercel Serverless & Local)
 
 Headless asynchronous REST & SSE API for the LangGraph multi-agent pipeline:
 - Sequential Multi-Agent Flow: Researcher -> Analyst -> Writer
@@ -9,15 +9,20 @@ Headless asynchronous REST & SSE API for the LangGraph multi-agent pipeline:
 """
 
 import sys
+import os
 import asyncio
 import json
-import os
 import traceback
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional, Any, Dict, List
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# Ensure api directory is always on sys.path for internal relative imports
+_api_dir = os.path.dirname(os.path.abspath(__file__))
+if _api_dir not in sys.path:
+    sys.path.insert(0, _api_dir)
 
 from dotenv import load_dotenv
 import psycopg
@@ -27,7 +32,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
-from workflow import get_async_graph, close_async_graph
+try:
+    from workflow import get_async_graph, close_async_graph
+except ImportError:
+    from api.workflow import get_async_graph, close_async_graph
 
 load_dotenv()
 
@@ -63,7 +71,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow all origins so local React dev servers (Vite/Next.js) can connect seamlessly
+# Allow all origins so local React dev servers (Vite/Next.js) and Vercel frontends can connect seamlessly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -239,7 +247,7 @@ async def api_root():
         "service": "Desktop Hardware AI Researcher API",
         "docs_url": "/docs",
         "endpoints": {
-            "health": "GET /health",
+            "health": "GET /api/health",
             "threads": "GET /api/chat/threads",
             "chat_stream": "POST /api/chat/stream",
             "chat_history": "GET /api/chat/history/{thread_id}",
@@ -248,6 +256,7 @@ async def api_root():
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint for container / server monitoring."""
     return {
@@ -410,4 +419,4 @@ async def delete_chat_thread(thread_id: str):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("index:app", host="0.0.0.0", port=8000, reload=True)

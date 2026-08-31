@@ -7,6 +7,7 @@ editorial reports for brand new PC builds and concise, direct conversational res
 """
 
 import sys
+import os
 import asyncio
 from dotenv import load_dotenv
 from langchain_core.messages import BaseMessage, AIMessage, trim_messages
@@ -14,7 +15,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from state import AgentState
+try:
+    from state import AgentState
+except ImportError:
+    from api.state import AgentState
 
 load_dotenv()
 

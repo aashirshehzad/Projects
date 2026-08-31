@@ -5,13 +5,18 @@ Critiques raw hardware research data for missing details, bottlenecks, and marke
 producing a concise, internal technical evaluation for downstream synthesis.
 """
 
+import os
+import sys
 from dotenv import load_dotenv
 from langchain_core.messages import BaseMessage, trim_messages
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from state import AgentState
+try:
+    from state import AgentState
+except ImportError:
+    from api.state import AgentState
 
 load_dotenv()
 

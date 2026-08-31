@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "dev:all": "concurrently \"npm run dev\" \"cd .. && uvicorn main:app --reload\""
+    "dev:all": "concurrently \"npm run dev\" \"cd .. && uvicorn api.index:app --reload\""
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
