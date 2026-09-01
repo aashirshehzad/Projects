@@ -3,32 +3,58 @@ Agent 1 – Quantitative Analysis Agent.
 
 Responsibilities
 ────────────────
-• Fetch 6 months of historical OHLCV data via **yfinance**.
+• Fetch a 6-month analysis window of historical OHLCV data via **yfinance**,
+  plus extra look-back so the 200-day moving average is available on the
+  first day of that window.
 • Compute 50-day & 200-day simple moving averages.
-• Compute overall percentage return over the window.
+• Compute overall percentage return over the analysis window.
 • Package the results as `TickerSummary` objects and append them
   to `StockAnalysisState.historical_data`.
+• Record any ticker that could not be processed in
+  `StockAnalysisState.failed_tickers` instead of failing the whole run.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pandas as pd
 import yfinance as yf
 
-from app.state import MovingAverages, StockAnalysisState, TickerSummary
+from app.state import (
+    MovingAverages,
+    PricePoint,
+    StockAnalysisState,
+    TickerError,
+    TickerSummary,
+)
 
 logger = logging.getLogger(__name__)
+
+# Extra calendar days fetched *before* the analysis window so that a full
+# 200-session moving average can be computed for its first day (≈200 trading
+# days ≈ 290 calendar days; 300 leaves head-room for holidays).
+_MA_LOOKBACK_DAYS = 300
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _fetch_history(ticker: str, period_months: int = 6) -> pd.DataFrame:
-    """Download adjusted-close history for *ticker* over the last *period_months*."""
+def _fetch_history(
+    ticker: str,
+    analysis_months: int = 6,
+    ma_lookback_days: int = _MA_LOOKBACK_DAYS,
+) -> pd.DataFrame:
+    """
+    Download price history for *ticker*.
+
+    The fetched window is the last *analysis_months* **plus**
+    ``ma_lookback_days`` of extra look-back, so the 200-day moving average is
+    defined from the very start of the analysis window.
+    """
     end = datetime.today()
-    start = end - timedelta(days=period_months * 30)  # approximate
+    start = end - timedelta(days=analysis_months * 30 + ma_lookback_days)
 
     logger.info("Fetching %s  %s → %s", ticker, start.date(), end.date())
     stock = yf.Ticker(ticker)
@@ -41,28 +67,60 @@ def _fetch_history(ticker: str, period_months: int = 6) -> pd.DataFrame:
     return df
 
 
-def _build_summary(ticker: str, df: pd.DataFrame) -> TickerSummary:
-    """Derive quantitative metrics from a price DataFrame."""
+def _build_summary(
+    ticker: str, df: pd.DataFrame, analysis_months: int = 6
+) -> TickerSummary:
+    """
+    Derive quantitative metrics from a price DataFrame.
+
+    *df* carries look-back rows ahead of the analysis window: the moving
+    averages are computed on the full series, while the return / period
+    figures use only the trailing *analysis_months* slice.
+    """
     close = df["Close"]
 
-    first_close = float(close.iloc[0])
-    last_close = float(close.iloc[-1])
+    # Rolling means on the *full* series (look-back included) so they are
+    # already "warm" on the first day of the analysis window.
+    ma_50_series = close.rolling(window=50).mean()
+    ma_200_series = close.rolling(window=200).mean()
+
+    ma_50 = float(ma_50_series.iloc[-1]) if len(close) >= 50 else None
+    ma_200 = float(ma_200_series.iloc[-1]) if len(close) >= 200 else None
+
+    # Restrict return / period metrics — and the emitted series — to the window.
+    window_start = df.index.max() - pd.Timedelta(days=analysis_months * 30)
+    window = df.loc[df.index >= window_start]
+    window_close = window["Close"]
+
+    first_close = float(window_close.iloc[0])
+    last_close = float(window_close.iloc[-1])
     pct_return = (last_close - first_close) / first_close * 100
 
-    ma_50 = float(close.rolling(window=50).mean().iloc[-1]) if len(close) >= 50 else None
-    ma_200 = float(close.rolling(window=200).mean().iloc[-1]) if len(close) >= 200 else None
+    def _clean(value: float) -> Optional[float]:
+        return round(float(value), 4) if pd.notna(value) else None
+
+    price_history = [
+        PricePoint(
+            date=str(idx.date()),
+            close=round(float(price), 4),
+            ma_50=_clean(ma_50_series.loc[idx]),
+            ma_200=_clean(ma_200_series.loc[idx]),
+        )
+        for idx, price in window_close.items()
+    ]
 
     return TickerSummary(
         ticker=ticker,
-        period_start=str(df.index.min().date()),
-        period_end=str(df.index.max().date()),
+        period_start=str(window.index.min().date()),
+        period_end=str(window.index.max().date()),
         latest_close=round(last_close, 4),
         moving_averages=MovingAverages(
             ma_50=round(ma_50, 4) if ma_50 is not None else None,
             ma_200=round(ma_200, 4) if ma_200 is not None else None,
         ),
         pct_return=round(pct_return, 4),
-        data_points=len(df),
+        data_points=len(window),
+        price_history=price_history,
     )
 
 
@@ -80,9 +138,11 @@ def quantitative_agent(state: StockAnalysisState) -> StockAnalysisState:
     Returns
     -------
     StockAnalysisState
-        A *new* state instance with ``historical_data`` filled in.
+        A *new* state instance with ``historical_data`` filled in, and
+        ``failed_tickers`` listing any symbol that could not be processed.
     """
     summaries: list[TickerSummary] = []
+    failures: list[TickerError] = []
 
     for ticker in state.tickers:
         try:
@@ -90,8 +150,13 @@ def quantitative_agent(state: StockAnalysisState) -> StockAnalysisState:
             summary = _build_summary(ticker, df)
             summaries.append(summary)
             logger.info("✓  %s — return %.2f%%", ticker, summary.pct_return)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 – isolate per-ticker failures
             logger.exception("✗  Failed to process %s", ticker)
+            failures.append(
+                TickerError(ticker=ticker, error=str(exc) or exc.__class__.__name__)
+            )
 
-    # Return a new state with historical_data populated
-    return state.model_copy(update={"historical_data": summaries})
+    # Return a new state with the quantitative results populated.
+    return state.model_copy(
+        update={"historical_data": summaries, "failed_tickers": failures}
+    )

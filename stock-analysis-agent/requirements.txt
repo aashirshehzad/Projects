@@ -3,6 +3,13 @@ uvicorn[standard]==0.34.3
 langgraph==0.3.34
 langchain-core==0.3.44
 langgraph-checkpoint==2.0.25
-pydantic==2.11.4
+# Bumped from ==2.11.4: google-genai (below) needs pydantic>=2.12.5. 2.13.x is
+# compatible with langgraph 0.3.34 / langchain-core 0.3.44 / fastapi 0.115.12.
+pydantic>=2.12.5,<3
 yfinance==0.2.62
 pandas==2.3.0
+# Agent 3 (decision) — LLM synthesis via the Google Gemini API.
+google-genai>=2.0,<3
+# Loads .env into the environment on startup (see app/__init__.py).
+# Also pulled in transitively by uvicorn[standard]; open bound to avoid a downgrade.
+python-dotenv>=1.0

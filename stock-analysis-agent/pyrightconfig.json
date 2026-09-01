@@ -1,5 +1,6 @@
 {
-  "pythonPath": "C:\\Users\\Aashir\\anaconda3\\envs\\stockproject\\python.exe",
+  "venvPath": "C:\\Users\\Aashir\\anaconda3\\envs",
+  "venv": "stockproject",
   "extraPaths": [
     ".",
     "app"
