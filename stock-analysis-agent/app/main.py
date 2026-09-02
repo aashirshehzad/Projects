@@ -8,6 +8,7 @@ GET  /health               →  liveness probe
 POST /analyze              →  run the full LangGraph workflow
 POST /analyze/quantitative →  run only Agent 1 (quantitative)
 POST /analyze/fundamental  →  run only Agent 2 (fundamental)
+POST /analyze/news         →  run only Agent 2.5 (news / Tavily)
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.agent_fundamental import fundamental_agent
+from app.agent_news import news_agent
 from app.agent_quantitative import quantitative_agent
 from app.graph import run_analysis
 from app.state import StockAnalysisState
@@ -73,8 +75,9 @@ async def health():
 
 
 def _response_status(state: StockAnalysisState) -> str:
-    """`"success"` unless some tickers failed, in which case `"partial_success"`."""
-    return "partial_success" if state.failed_tickers else "success"
+    """`"success"` unless a ticker failed or Agent 3 degraded → `"partial_success"`."""
+    decision_failed = bool(state.final_decision and state.final_decision.error)
+    return "partial_success" if (state.failed_tickers or decision_failed) else "success"
 
 
 # NOTE: these routes are declared ``def`` (not ``async def``) on purpose.
@@ -126,4 +129,19 @@ def analyze_fundamental(request: AnalyzeRequest | None = None):
         return AnalyzeResponse(status=_response_status(result_state), state=result_state)
     except Exception as exc:
         logger.exception("Fundamental agent failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/analyze/news", response_model=AnalyzeResponse)
+def analyze_news(request: AnalyzeRequest | None = None):
+    """Run **only** Agent 2.5 (news / Tavily) outside the graph for quick testing."""
+    tickers = request.tickers if request else ["AAPL", "NVDA", "MSFT"]
+    initial_state = StockAnalysisState(tickers=tickers)
+
+    try:
+        logger.info("Running news agent for %s", tickers)
+        result_state = news_agent(initial_state)
+        return AnalyzeResponse(status=_response_status(result_state), state=result_state)
+    except Exception as exc:
+        logger.exception("News agent failed")
         raise HTTPException(status_code=500, detail=str(exc))

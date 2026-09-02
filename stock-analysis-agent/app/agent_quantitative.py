@@ -7,6 +7,7 @@ Responsibilities
   plus extra look-back so the 200-day moving average is available on the
   first day of that window.
 • Compute 50-day & 200-day simple moving averages.
+• Compute the 14-day Relative Strength Index (Wilder's RSI).
 • Compute overall percentage return over the analysis window.
 • Package the results as `TickerSummary` objects and append them
   to `StockAnalysisState.historical_data`.
@@ -38,8 +39,36 @@ logger = logging.getLogger(__name__)
 # days ≈ 290 calendar days; 300 leaves head-room for holidays).
 _MA_LOOKBACK_DAYS = 300
 
+# Standard Wilder look-back for the Relative Strength Index.
+_RSI_PERIOD = 14
+
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
+def _compute_rsi(close: pd.Series, period: int = _RSI_PERIOD) -> Optional[float]:
+    """
+    Final value of the *period*-day RSI for *close*, using Wilder's smoothing
+    (an EWMA with ``alpha = 1 / period``). Returns ``None`` when there is not
+    enough history to seed the average.
+    """
+    if len(close) <= period:
+        return None
+
+    delta = close.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+
+    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100.0 - 100.0 / (1.0 + rs)
+
+    value = rsi.iloc[-1]
+    if pd.isna(value):
+        return None
+    # A flat/rising series gives avg_loss == 0 → rs == inf → rsi == 100.
+    return round(float(value), 2)
 
 def _fetch_history(
     ticker: str,
@@ -87,6 +116,9 @@ def _build_summary(
     ma_50 = float(ma_50_series.iloc[-1]) if len(close) >= 50 else None
     ma_200 = float(ma_200_series.iloc[-1]) if len(close) >= 200 else None
 
+    # 14-day RSI on the full series so it is "warm" for the latest session.
+    rsi_14 = _compute_rsi(close)
+
     # Restrict return / period metrics — and the emitted series — to the window.
     window_start = df.index.max() - pd.Timedelta(days=analysis_months * 30)
     window = df.loc[df.index >= window_start]
@@ -119,6 +151,7 @@ def _build_summary(
             ma_200=round(ma_200, 4) if ma_200 is not None else None,
         ),
         pct_return=round(pct_return, 4),
+        rsi_14=rsi_14,
         data_points=len(window),
         price_history=price_history,
     )

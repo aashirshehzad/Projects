@@ -10,6 +10,8 @@ yfinance==0.2.62
 pandas==2.3.0
 # Agent 3 (decision) — LLM synthesis via the Google Gemini API.
 google-genai>=2.0,<3
+# Agent 2.5 (news) — dated headlines via the Tavily search API.
+tavily-python>=0.7
 # Loads .env into the environment on startup (see app/__init__.py).
 # Also pulled in transitively by uvicorn[standard]; open bound to avoid a downgrade.
 python-dotenv>=1.0

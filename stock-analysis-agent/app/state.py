@@ -1,15 +1,16 @@
 """
 Pydantic state schema for the stock-analysis LangGraph workflow.
 
-The schema flows through three stages:
-  1. Agent 1 (Quantitative) populates `historical_data`
-  2. Agent 2 (Fundamental)  populates `fundamental_report` + `fundamental_highlights`
-  3. Agent 3 (Decision)     populates `final_decision`
+The schema flows through four stages, the first three in parallel:
+  1. Agent 1   (Quantitative) populates `historical_data`
+  2. Agent 2   (Fundamental)  populates `fundamental_report` + `fundamental_highlights`
+  2.5 Agent 2.5 (News)         populates `news_context`
+  3. Agent 3   (Decision)      populates `final_decision` (a `DecisionReport`)
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -64,6 +65,14 @@ class TickerSummary(BaseModel):
         description=(
             "Overall percentage return over the analysis window, "
             "calculated as (last_close - first_close) / first_close * 100."
+        ),
+    )
+    rsi_14: Optional[float] = Field(
+        None,
+        description=(
+            "14-day Relative Strength Index (Wilder's smoothing) at the latest "
+            "close. >70 is conventionally overbought, <30 oversold. None when "
+            "there is too little history to compute it."
         ),
     )
     data_points: int = Field(
@@ -127,6 +136,120 @@ class FundamentalHighlights(BaseModel):
     )
 
 
+# ── per-ticker news context produced by Agent 2.5 ──────────────────────────
+
+class NewsItem(BaseModel):
+    """One search hit: a dated headline with a source link."""
+
+    title: str = Field(..., description="Headline text.")
+    url: str = Field(..., description="Source URL.")
+    published_date: Optional[str] = Field(
+        None, description="Publish date as returned by the search provider, if any."
+    )
+    snippet: Optional[str] = Field(
+        None, description="Short extract of the article body."
+    )
+
+
+class TickerNews(BaseModel):
+    """The recent-news bundle for one ticker (Agent 2.5)."""
+
+    ticker: str = Field(..., description="Stock ticker symbol.")
+    summary: Optional[str] = Field(
+        None, description="Provider-synthesised summary of the recent news, if any."
+    )
+    items: list[NewsItem] = Field(
+        default_factory=list, description="Individual dated headlines, newest first."
+    )
+    notes: Optional[str] = Field(
+        None, description="Why the bundle is empty / partial (no key, provider error…)."
+    )
+
+
+# ── Agent 3 decision report ────────────────────────────────────────────────
+
+class NewsCatalyst(BaseModel):
+    """One dated news event correlated with a price/volume reaction."""
+
+    date: str = Field(..., description='Event date, e.g. "2026-07-30" or "April 2026".')
+    headline: str = Field(..., description="The catalyst, with its source named.")
+    source: str = Field("", description="Publication or URL the catalyst comes from.")
+    market_reaction: str = Field(
+        ..., description="Stock % move / volume spike / trend shift that followed."
+    )
+    causal_impact: str = Field(
+        ...,
+        description="Why this news produced that reaction — the specific mechanism.",
+    )
+
+
+class Scenario(BaseModel):
+    """One leg of the bull / base / bear matrix for a ticker."""
+
+    case: Literal["bull", "base", "bear"] = Field(..., description="Which leg.")
+    probability: Optional[float] = Field(
+        None, description="Analytical probability estimate, 0..1."
+    )
+    drivers: str = Field(..., description="What has to happen for this case.")
+    invalidation_trigger: str = Field(
+        ..., description="The fundamental condition that would break this case."
+    )
+
+
+class TickerReport(BaseModel):
+    """The full three-section analysis for a single ticker."""
+
+    ticker: str = Field(..., description="Stock ticker symbol.")
+    recommendation: Literal["Buy", "Sell", "Hold"] = Field(
+        ..., description="Machine-readable verdict for this ticker."
+    )
+    executive_thesis: str = Field(
+        ...,
+        description=(
+            "Section 1 — deep fundamental analysis: revenue drivers, moat, unit "
+            "economics, balance sheet, macro/sector alignment. Plain prose, "
+            "paragraphs separated by blank lines."
+        ),
+    )
+    catalyst_timeline: list[NewsCatalyst] = Field(
+        default_factory=list,
+        description="Section 2 — dated catalysts with price impact, newest first.",
+    )
+    scenarios: list[Scenario] = Field(
+        default_factory=list,
+        description="Section 3 — bull / base / bear legs with invalidation triggers.",
+    )
+    downside_risks: list[str] = Field(
+        default_factory=list, description="Ticker-specific downside risks."
+    )
+
+
+class DecisionReport(BaseModel):
+    """Agent 3 output: one `TickerReport` per symbol plus shared context."""
+
+    reports: list[TickerReport] = Field(
+        default_factory=list, description="One entry per analysed ticker."
+    )
+    cross_cutting_risks: list[str] = Field(
+        default_factory=list,
+        description="Risks that hit the whole basket (rates, sector rotation…).",
+    )
+    model: Optional[str] = Field(None, description="LLM model id that produced this.")
+    generated_at: Optional[str] = Field(
+        None, description="UTC ISO-8601 timestamp of generation."
+    )
+    critic_notes: Optional[str] = Field(
+        None,
+        description="What the internal reflection pass flagged and corrected.",
+    )
+    raw_response: Optional[str] = Field(
+        None, description="Verbatim final LLM JSON (for debugging)."
+    )
+    error: Optional[str] = Field(
+        None, description="Set when the report is a degraded fallback."
+    )
+
+
 # ── top-level workflow state ─────────────────────────────────────────────────
 
 class StockAnalysisState(BaseModel):
@@ -169,12 +292,19 @@ class StockAnalysisState(BaseModel):
             "that back `fundamental_report`."
         ),
     )
-    final_decision: Optional[dict[str, Any]] = Field(
+    news_context: list[TickerNews] = Field(
+        default_factory=list,
+        description=(
+            "Recent dated headlines per ticker from Agent 2.5, so Agent 3 can "
+            "cite real catalysts instead of guessing."
+        ),
+    )
+    final_decision: Optional[DecisionReport] = Field(
         None,
         description=(
-            "Final investment decision produced by Agent 3: a dict with a strict "
-            '`recommendation` ("Buy" / "Sell" / "Hold"), a bulleted `thesis` list, '
-            "and `model` / `generated_at` / `raw_response` metadata (or an `error` "
-            "key when the LLM call could not be made)."
+            "Agent 3 output: a `DecisionReport` with one three-section "
+            "`TickerReport` per symbol (executive thesis, dated catalyst "
+            "timeline, bull/base/bear matrix) plus `cross_cutting_risks` and "
+            "run metadata. `error` is set when it is a degraded fallback."
         ),
     )

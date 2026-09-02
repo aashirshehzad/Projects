@@ -110,12 +110,53 @@
     border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5;
   }
   .failed { color: var(--sell); font-size: 13px; margin: 4px 0; }
+
+  /* ---- Agent 3 three-section report ---- */
+  .card h3 {
+    margin: 22px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .report .badge { font-size: 17px; padding: 3px 12px; }
+  .report h3:first-of-type { margin-top: 16px; }
+  .thesis-prose p { margin: 8px 0; font-size: 13.5px; line-height: 1.6; }
+
+  .timeline { list-style: none; margin: 0; padding: 0; }
+  .timeline li {
+    border-left: 2px solid var(--border); padding: 0 0 14px 14px; position: relative;
+  }
+  .timeline li::before {
+    content: ""; position: absolute; left: -5px; top: 4px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  }
+  .timeline li:last-child { padding-bottom: 0; }
+  .timeline .date { font-weight: 700; font-size: 13px; }
+  .timeline .headline { font-size: 13px; }
+  .timeline .headline a { color: var(--accent); }
+  .timeline .react { font-size: 12.5px; color: var(--ink); margin-top: 2px; }
+  .timeline .react b, .timeline .cause b { color: var(--muted); font-weight: 600; }
+  .timeline .cause { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  table.scen { font-size: 12.5px; margin-top: 4px; }
+  table.scen th, table.scen td { text-align: left; vertical-align: top; }
+  table.scen td:first-child { white-space: nowrap; font-weight: 700; }
+  table.scen .bull { color: var(--buy); }
+  table.scen .bear { color: var(--sell); }
+  table.scen .base { color: var(--hold); }
+  table.scen .prob { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .risks { margin: 6px 0 0; padding-left: 20px; }
+  .risks li { margin: 5px 0; font-size: 13px; }
+
+  .headlines { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; }
+  .headlines li { margin: 4px 0; color: var(--muted); }
+  .headlines a { color: var(--accent); }
+  .headlines .d { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
 <header>
   <h1>Stock Analysis Agent</h1>
-  <p>Agent&nbsp;1 (yfinance prices) ∥ Agent&nbsp;2 (SEC EDGAR filings) → Agent&nbsp;3 (Gemini) → Buy / Sell / Hold</p>
+  <p>Agents&nbsp;1&ndash;2.5 (prices ∥ SEC filings ∥ Tavily news) → Agent&nbsp;3 (Gemini) → per-ticker thesis, dated catalyst timeline &amp; scenario matrix</p>
 </header>
 
 <main>
@@ -125,7 +166,7 @@
            autocomplete="off" spellcheck="false" />
     <button id="run">Analyze</button>
   </div>
-  <p class="hint">A full run fetches live prices + filings and calls the LLM — it can take 20–40&nbsp;seconds.</p>
+  <p class="hint">A full run fetches live prices, SEC filings and news, then calls the LLM for a per-ticker report — allow up to ~90&nbsp;seconds.</p>
 
   <div id="status" hidden></div>
   <div id="results"></div>
@@ -136,6 +177,13 @@ const $ = (sel) => document.querySelector(sel);
 const charts = [];
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString(undefined, { style: "currency", currency: "USD" });
 const fmtPct = (v) => v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+const fmtRSI = (v) => {
+  if (v == null) return "—";
+  const s = v.toFixed(1);
+  if (v > 70) return `<span class="neg" title="Overbought (RSI &gt; 70)">${s} ▲</span>`;
+  if (v < 30) return `<span class="pos" title="Oversold (RSI &lt; 30)">${s} ▼</span>`;
+  return s;
+};
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
@@ -156,7 +204,7 @@ async function analyze() {
   $("#run").disabled = true;
   destroyCharts();
   $("#results").innerHTML = "";
-  setStatus(`Running the pipeline for ${tickers.join(", ")} … this can take up to ~40s.`);
+  setStatus(`Running the pipeline for ${tickers.join(", ")} … this can take up to ~90s.`);
 
   const started = performance.now();
   try {
@@ -186,13 +234,32 @@ function setStatus(msg, isError = false) {
 
 function render(state) {
   const root = $("#results");
-  root.appendChild(decisionCard(state.final_decision));
+  const decision = state.final_decision;
+  const newsByTicker = {};
+  (state.news_context || []).forEach((n) => { newsByTicker[n.ticker] = n; });
+
+  if (decision && decision.error) {
+    const c = card("");
+    c.innerHTML = `<div class="warn">⚠ Agent 3 degraded: ${esc(decision.error)}</div>`;
+    root.appendChild(c);
+  }
+
+  const reports = (decision && decision.reports) || [];
+  reports.forEach((r) => root.appendChild(reportCard(r)));
+
+  if (decision && (decision.cross_cutting_risks || []).length) {
+    const c = card("Cross-cutting risks");
+    c.innerHTML += `<ul class="risks">${
+      decision.cross_cutting_risks.map((x) => `<li>${esc(x)}</li>`).join("")
+    }</ul>`;
+    root.appendChild(c);
+  }
 
   const hist = state.historical_data || [];
   if (hist.length) {
     root.appendChild(returnsCard(hist));
     root.appendChild(metricsCard(hist));
-    hist.forEach((h) => root.appendChild(tickerCard(h)));
+    hist.forEach((h) => root.appendChild(tickerCard(h, newsByTicker[h.ticker])));
   }
 
   const failed = state.failed_tickers || [];
@@ -207,8 +274,87 @@ function render(state) {
     root.appendChild(c);
   }
 
+  if (decision) {
+    const meta = decision.model
+      ? `${decision.model}${decision.generated_at ? " · " + new Date(decision.generated_at).toLocaleString() : ""}`
+      : "";
+    if (meta) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = `Report by ${meta}`;
+      root.appendChild(p);
+    }
+    if (decision.critic_notes) {
+      root.appendChild(rawDetails("Critic notes (Agent 3 reflection pass)", decision.critic_notes));
+    }
+  }
   root.appendChild(rawDetails("Fundamental report (Agent 2)", state.fundamental_report || "(none)"));
   root.appendChild(rawDetails("Full response JSON", JSON.stringify(state, null, 2)));
+}
+
+const CASE_LABEL = { bull: "Bull", base: "Base", bear: "Bear" };
+
+function reportCard(r) {
+  const c = card("");
+  c.className = "card report";
+  const rec = r.recommendation || "Hold";
+  c.innerHTML = `
+    <div class="verdict">
+      <span class="badge ${esc(rec)}">${esc(rec)}</span>
+      <h2 style="margin:0">${esc(r.ticker)}</h2>
+    </div>
+
+    <h3>Executive thesis &amp; valuation drivers</h3>
+    <div class="thesis-prose">${
+      String(r.executive_thesis || "")
+        .split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`).join("")
+    }</div>
+
+    <h3>Timeline of dated news catalysts &amp; price impact</h3>
+    ${
+      (r.catalyst_timeline || []).length
+        ? `<ul class="timeline">${(r.catalyst_timeline || []).map(catalystRow).join("")}</ul>`
+        : `<p class="hint">No dated catalysts available for this ticker.</p>`
+    }
+
+    <h3>Scenario matrix &amp; downside risks</h3>
+    ${scenarioTable(r.scenarios || [])}
+    ${
+      (r.downside_risks || []).length
+        ? `<ul class="risks">${(r.downside_risks || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
+        : ""
+    }
+  `;
+  return c;
+}
+
+function catalystRow(k) {
+  const src = k.source
+    ? (/^https?:\/\//.test(k.source)
+        ? ` <a href="${esc(k.source)}" target="_blank" rel="noopener">source</a>`
+        : ` <span style="color:var(--muted)">(${esc(k.source)})</span>`)
+    : "";
+  return `<li>
+    <div class="date">${esc(k.date || "—")}</div>
+    <div class="headline">${esc(k.headline || "")}${src}</div>
+    <div class="react"><b>Reaction:</b> ${esc(k.market_reaction || "—")}</div>
+    <div class="cause"><b>Causal impact:</b> ${esc(k.causal_impact || "—")}</div>
+  </li>`;
+}
+
+function scenarioTable(scen) {
+  if (!scen.length) return `<p class="hint">No scenarios returned.</p>`;
+  const order = { bull: 0, base: 1, bear: 2 };
+  const rows = [...scen].sort((a, b) => (order[a.case] ?? 9) - (order[b.case] ?? 9)).map((s) => `
+    <tr>
+      <td class="${esc(s.case)}">${esc(CASE_LABEL[s.case] || s.case || "—")}</td>
+      <td class="prob">${s.probability == null ? "—" : Math.round(s.probability * 100) + "%"}</td>
+      <td>${esc(s.drivers || "—")}</td>
+      <td><b style="color:var(--muted)">Invalidation:</b> ${esc(s.invalidation_trigger || "—")}</td>
+    </tr>`).join("");
+  return `<div style="overflow-x:auto"><table class="scen">
+    <thead><tr><th>Case</th><th class="prob">Prob.</th><th>Drivers</th><th>Invalidation trigger</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }
 
 function card(title) {
@@ -222,25 +368,6 @@ function card(title) {
   return c;
 }
 
-function decisionCard(d) {
-  const c = card("");
-  if (!d) {
-    c.innerHTML = "<h2>Decision</h2><p class='warn'>No decision was produced.</p>";
-    return c;
-  }
-  const rec = d.recommendation || "Hold";
-  const when = d.generated_at ? new Date(d.generated_at).toLocaleString() : "";
-  c.innerHTML = `
-    <div class="verdict">
-      <span class="badge ${esc(rec)}">${esc(rec)}</span>
-      <span class="meta">${esc(d.model || "")}${when ? " · " + esc(when) : ""}</span>
-    </div>
-    ${d.error ? `<div class="warn">⚠ ${esc(d.error)}</div>` : ""}
-    <ul class="thesis">${(d.thesis || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
-  `;
-  return c;
-}
-
 function metricsCard(hist) {
   const c = card("Quantitative metrics");
   const rows = hist.map((h) => `
@@ -250,6 +377,7 @@ function metricsCard(hist) {
       <td class="${h.pct_return >= 0 ? "pos" : "neg"}">${fmtPct(h.pct_return)}</td>
       <td>${fmtUSD(h.moving_averages?.ma_50)}</td>
       <td>${fmtUSD(h.moving_averages?.ma_200)}</td>
+      <td>${fmtRSI(h.rsi_14)}</td>
       <td>${h.data_points}</td>
       <td>${esc(h.period_start)} → ${esc(h.period_end)}</td>
     </tr>`).join("");
@@ -258,7 +386,7 @@ function metricsCard(hist) {
       <table>
         <thead><tr>
           <th>Ticker</th><th>Last close</th><th>6-mo return</th>
-          <th>MA-50</th><th>MA-200</th><th>Days</th><th>Window</th>
+          <th>MA-50</th><th>MA-200</th><th>RSI-14</th><th>Days</th><th>Window</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -290,7 +418,7 @@ function returnsCard(hist) {
   return c;
 }
 
-function tickerCard(h) {
+function tickerCard(h, news) {
   const c = card("");
   const head = document.createElement("div");
   head.className = "ticker-head";
@@ -304,6 +432,7 @@ function tickerCard(h) {
     p.className = "hint";
     p.textContent = "No price series returned for this ticker.";
     c.appendChild(p);
+    appendHeadlines(c, news);
     return c;
   }
 
@@ -326,7 +455,23 @@ function tickerCard(h) {
     },
     options: baseOpts({ yTitle: "USD", xTicks: 8 }),
   }));
+  appendHeadlines(c, news);
   return c;
+}
+
+function appendHeadlines(container, news) {
+  const items = (news && news.items) || [];
+  if (!items.length) return;
+  const ul = document.createElement("ul");
+  ul.className = "headlines";
+  ul.innerHTML = items.slice(0, 6).map((it) => {
+    const d = it.published_date ? `<span class="d">${esc(it.published_date.slice(0, 10))}</span> · ` : "";
+    return `<li>${d}<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a></li>`;
+  }).join("");
+  const h = document.createElement("h3");
+  h.textContent = "Recent headlines";
+  container.appendChild(h);
+  container.appendChild(ul);
 }
 
 function baseOpts({ yTitle, xTicks = 6 } = {}) {
