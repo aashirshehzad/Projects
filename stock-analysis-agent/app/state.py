@@ -10,15 +10,21 @@ The schema flows through four stages, the first three in parallel:
 
 from __future__ import annotations
 
+import math
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Chart timeframes the pipeline understands (see `_TIMEFRAMES` in
+# app/agent_quantitative.py for the yfinance period/interval each maps to).
+Timeframe = Literal["1D", "5D", "1M", "6M", "1Y", "ALL"]
+DEFAULT_TIMEFRAME: Timeframe = "6M"
 
 
 # ── per-ticker summary produced by Agent 1 ──────────────────────────────────
 
 class MovingAverages(BaseModel):
-    """50-day and 200-day simple moving averages."""
+    """50-day / 200-day simple moving averages plus the 9-day & 20-day EMAs."""
 
     ma_50: Optional[float] = Field(
         None,
@@ -28,12 +34,91 @@ class MovingAverages(BaseModel):
         None,
         description="200-day simple moving average of the adjusted close price.",
     )
+    ema_9: Optional[float] = Field(
+        None,
+        description=(
+            "9-day exponential moving average (ewm span=9, adjust=False) of the "
+            "adjusted close, at the latest close. Fast short-term trend gauge; "
+            "its cross with EMA-20 is a common momentum signal."
+        ),
+    )
+    ema_20: Optional[float] = Field(
+        None,
+        description=(
+            "20-day exponential moving average (ewm span=20, adjust=False) of "
+            "the adjusted close, at the latest close. Short-term trend gauge."
+        ),
+    )
+
+
+class MACD(BaseModel):
+    """Standard MACD (12/26/9) snapshot at the latest close."""
+
+    macd_line: Optional[float] = Field(
+        None, description="EMA-12(close) − EMA-26(close) at the latest close."
+    )
+    signal_line: Optional[float] = Field(
+        None, description="EMA-9 of the MACD line at the latest close."
+    )
+    macd_histogram: Optional[float] = Field(
+        None,
+        description=(
+            "macd_line − signal_line at the latest close. Positive = bullish "
+            "momentum, expanding bars = strengthening momentum."
+        ),
+    )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _nan_to_none(cls, v):
+        if v is None:
+            return None
+        f = float(v)
+        return f if math.isfinite(f) else None
+
+
+class BollingerBands(BaseModel):
+    """Bollinger Bands (SMA-20 ± 2σ) snapshot at the latest close."""
+
+    bb_upper: Optional[float] = Field(
+        None, description="Middle band + 2 × rolling std (20) at the latest close."
+    )
+    bb_middle: Optional[float] = Field(
+        None, description="20-day SMA of close at the latest close."
+    )
+    bb_lower: Optional[float] = Field(
+        None, description="Middle band − 2 × rolling std (20) at the latest close."
+    )
+    bandwidth: Optional[float] = Field(
+        None,
+        description=(
+            "(bb_upper − bb_lower) / bb_middle — normalised band width. Low = "
+            "volatility squeeze, high = expansion."
+        ),
+    )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _nan_to_none(cls, v):
+        if v is None:
+            return None
+        f = float(v)
+        return f if math.isfinite(f) else None
 
 
 class PricePoint(BaseModel):
-    """One trading day inside the analysis window: close plus the two MAs."""
+    """
+    One trading day inside the analysis window: the full OHLC bar, share
+    volume, the moving averages (MA-50 / MA-200 / EMA-9 / EMA-20), the 14-day
+    RSI, the MACD (12/26/9) line / signal / histogram and the Bollinger Bands
+    (SMA-20 ± 2σ) at that date. Powers the dashboard's candlestick + volume
+    chart and its synchronised RSI & MACD sub-charts.
+    """
 
     date: str = Field(..., description="ISO trading date.")
+    open: float = Field(..., description="Opening price in USD.")
+    high: float = Field(..., description="Intraday high in USD.")
+    low: float = Field(..., description="Intraday low in USD.")
     close: float = Field(..., description="Adjusted close price in USD.")
     ma_50: Optional[float] = Field(
         None, description="50-day SMA at this date (None until 50 sessions exist)."
@@ -41,17 +126,99 @@ class PricePoint(BaseModel):
     ma_200: Optional[float] = Field(
         None, description="200-day SMA at this date (None until 200 sessions exist)."
     )
+    ema_9: Optional[float] = Field(
+        None,
+        description=(
+            "9-day EMA (ewm span=9, adjust=False) at this date. Seeds on the "
+            "first row of the underlying series, so rarely None."
+        ),
+    )
+    ema_20: Optional[float] = Field(
+        None,
+        description=(
+            "20-day EMA (ewm span=20, adjust=False) at this date. Seeds on the "
+            "first row of the underlying series, so rarely None."
+        ),
+    )
+    rsi_14: Optional[float] = Field(
+        None,
+        description=(
+            "14-day Wilder RSI at this date (None for the first ~14 sessions of "
+            "the underlying series). >70 overbought, <30 oversold."
+        ),
+    )
+    macd_line: Optional[float] = Field(
+        None, description="MACD line (EMA-12 − EMA-26 of close) at this date."
+    )
+    signal_line: Optional[float] = Field(
+        None, description="Signal line (EMA-9 of the MACD line) at this date."
+    )
+    macd_histogram: Optional[float] = Field(
+        None, description="MACD histogram (macd_line − signal_line) at this date."
+    )
+    bb_upper: Optional[float] = Field(
+        None, description="Bollinger upper band (SMA-20 + 2σ) at this date."
+    )
+    bb_middle: Optional[float] = Field(
+        None, description="Bollinger middle band (SMA-20 of close) at this date."
+    )
+    bb_lower: Optional[float] = Field(
+        None, description="Bollinger lower band (SMA-20 − 2σ) at this date."
+    )
+    volume: Optional[int] = Field(
+        None, description="Share volume for the bar (None if missing / non-finite)."
+    )
+
+    @field_validator("volume", mode="before")
+    @classmethod
+    def _volume_nonneg_int(cls, v):
+        """Keep the field; a NaN / negative / non-finite volume becomes null."""
+        if v is None:
+            return None
+        f = float(v)
+        return int(f) if math.isfinite(f) and f >= 0 else None
+
+    @field_validator("open", "high", "low", "close", mode="before")
+    @classmethod
+    def _ohlc_must_be_finite(cls, v, info):
+        """A candlestick bar is only meaningful with real OHLC numbers."""
+        f = float(v)
+        if not math.isfinite(f):
+            raise ValueError(f"{info.field_name} must be finite, got {v!r}")
+        return f
+
+    @field_validator(
+        "ma_50", "ma_200", "ema_9", "ema_20", "rsi_14",
+        "macd_line", "signal_line", "macd_histogram",
+        "bb_upper", "bb_middle", "bb_lower",
+        mode="before",
+    )
+    @classmethod
+    def _overlay_nan_to_none(cls, v):
+        """Keep the field, but collapse NaN / inf to ``null`` for clean JSON."""
+        if v is None:
+            return None
+        f = float(v)
+        return f if math.isfinite(f) else None
 
 
 class TickerSummary(BaseModel):
     """Quantitative summary for a single ticker."""
 
     ticker: str = Field(..., description="Stock ticker symbol, e.g. AAPL.")
+    timeframe: Timeframe = Field(
+        DEFAULT_TIMEFRAME,
+        description="Chart timeframe this summary was computed at.",
+    )
     period_start: str = Field(
-        ..., description="ISO-formatted start date of the analysis window."
+        ...,
+        description=(
+            "Start of the window — a YYYY-MM-DD date for daily timeframes, a "
+            "full ISO-8601 timestamp for intraday ones."
+        ),
     )
     period_end: str = Field(
-        ..., description="ISO-formatted end date of the analysis window."
+        ..., description="End of the window (same format as period_start)."
     )
     latest_close: float = Field(
         ..., description="Most recent adjusted close price in USD."
@@ -75,14 +242,24 @@ class TickerSummary(BaseModel):
             "there is too little history to compute it."
         ),
     )
+    macd: Optional[MACD] = Field(
+        None,
+        description="MACD (12/26/9) line / signal / histogram at the latest close.",
+    )
+    bollinger: Optional[BollingerBands] = Field(
+        None,
+        description="Bollinger Bands (SMA-20 ± 2σ) + bandwidth at the latest close.",
+    )
     data_points: int = Field(
         ..., description="Number of trading days in the analysis window."
     )
     price_history: list[PricePoint] = Field(
         default_factory=list,
         description=(
-            "Per-day close + MA-50 + MA-200 over the analysis window, oldest "
-            "first. Powers the price chart in the dashboard."
+            "Per-day OHLCV + MA-50 + MA-200 + EMA-9 + EMA-20 + RSI-14 + MACD "
+            "(line/signal/histogram) + Bollinger (upper/middle/lower) over the "
+            "analysis window, oldest first. Powers the candlestick + volume, "
+            "RSI and MACD charts."
         ),
     )
 
@@ -182,6 +359,15 @@ class NewsCatalyst(BaseModel):
         description="Why this news produced that reaction — the specific mechanism.",
     )
 
+    @field_validator(
+        "date", "headline", "source", "market_reaction", "causal_impact",
+        mode="before",
+    )
+    @classmethod
+    def _str_or_blank(cls, v):
+        """Tolerate a null / non-string where the model should have sent prose."""
+        return "" if v is None else str(v)
+
 
 class Scenario(BaseModel):
     """One leg of the bull / base / bear matrix for a ticker."""
@@ -195,6 +381,29 @@ class Scenario(BaseModel):
         ..., description="The fundamental condition that would break this case."
     )
 
+    @field_validator("case", mode="before")
+    @classmethod
+    def _case_lower(cls, v):
+        return str(v).strip().lower() if v is not None else v
+
+    @field_validator("probability", mode="before")
+    @classmethod
+    def _prob_clamp(cls, v):
+        if v is None or v == "":
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(f):
+            return None
+        return min(1.0, max(0.0, f))
+
+    @field_validator("drivers", "invalidation_trigger", mode="before")
+    @classmethod
+    def _str_or_blank(cls, v):
+        return "" if v is None else str(v)
+
 
 class TickerReport(BaseModel):
     """The full three-section analysis for a single ticker."""
@@ -203,6 +412,13 @@ class TickerReport(BaseModel):
     recommendation: Literal["Buy", "Sell", "Hold"] = Field(
         ..., description="Machine-readable verdict for this ticker."
     )
+
+    @field_validator("recommendation", mode="before")
+    @classmethod
+    def _rec_normalise(cls, v):
+        """Case-fold 'BUY'/'buy'/'Hold ' → the canonical literal; else 'Hold'."""
+        s = str(v).strip().lower()
+        return {"buy": "Buy", "sell": "Sell", "hold": "Hold"}.get(s, "Hold")
     executive_thesis: str = Field(
         ...,
         description=(
@@ -252,6 +468,17 @@ class DecisionReport(BaseModel):
 
 # ── top-level workflow state ─────────────────────────────────────────────────
 
+# Canonical default basket, shared by the graph entry point and every FastAPI
+# route so there is one place to change it. A deliberately high-beta set —
+# biotech (MRNA), crypto miners (MARA), semis (AMD, WOLF), space (ASTS) and
+# retail turnaround (CVNA) alongside TSLA / SMCI — so the volatility and
+# gap-handling paths stay exercised on every default run.
+DEFAULT_TICKERS: list[str] = [
+    "AAPL", "NVDA", "MSFT", "TSLA", "SMCI",
+    "AMD", "MRNA", "WOLF", "ASTS", "MARA", "CVNA",
+]
+
+
 class StockAnalysisState(BaseModel):
     """
     Shared state object that travels through the LangGraph workflow.
@@ -261,8 +488,12 @@ class StockAnalysisState(BaseModel):
     """
 
     tickers: list[str] = Field(
-        default_factory=lambda: ["AAPL", "NVDA", "MSFT"],
+        default_factory=lambda: list(DEFAULT_TICKERS),
         description="List of ticker symbols to analyse.",
+    )
+    timeframe: Timeframe = Field(
+        DEFAULT_TIMEFRAME,
+        description="Chart timeframe for Agent 1's price history (1D…ALL).",
     )
     historical_data: list[TickerSummary] = Field(
         default_factory=list,

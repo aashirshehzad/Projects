@@ -3,178 +3,482 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Stock Analysis Agent</title>
+<title>Stock Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
+  /* ═══════════════════════════════════════════════════════════════════════
+     DESIGN TOKENS  —  primitive → semantic, per the ui-ux-pro-max design
+     system (token-architecture / semantic-tokens / states-and-variants).
+     Colour values stay hex: the chart layer reads several of these via
+     getComputedStyle and hands them straight to a canvas library.
+     ═══════════════════════════════════════════════════════════════════════ */
   :root {
-    --bg: #f6f7f9;
-    --panel: #ffffff;
-    --ink: #1b1f24;
-    --muted: #6b7280;
-    --border: #e4e7ec;
-    --accent: #2563eb;
-    --buy: #16a34a;
-    --sell: #dc2626;
-    --hold: #d97706;
-    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .1);
+    /* ── primitives ── */
+    --c-bg:        #0a0e17;   /* app canvas            */
+    --c-surface-1: #10151f;   /* panels                */
+    --c-surface-2: #161d2b;   /* nested / hover        */
+    --c-surface-3: #1e2637;   /* elevated / active     */
+    --c-line:      #202839;   /* hairline border       */
+    --c-line-strong: #33405a;
+    --c-fg:        #e7ecf5;   /* primary text          */
+    --c-fg-dim:    #a7b2c6;   /* secondary text        */
+    --c-fg-muted:  #64708a;   /* tertiary / captions   */
+    --c-primary:   #4f8cff;
+    --c-primary-hi: #74a4ff;
+    --c-primary-lo: #2f6ae0;
+    --c-pos:       #35c37a;   /* up / buy              */
+    --c-neg:       #f0533f;   /* down / sell           */
+    --c-warn:      #e0a13a;   /* hold / caution        */
+    --c-ema:       #c084fc;
+    --c-ema-fast:  #fb923c;
+    --c-bb:        #4f8cff;
+
+    /* ── semantic aliases (what components use) ──
+       NOTE: the aliases the chart layer reads via getComputedStyle()
+       (--ink --accent --muted --border --buy --sell --ema --ema-fast --bb
+       --bb-fill) are kept as *literal* hex — the JS concatenates alpha onto
+       some of them (e.g. volume bar colour), so they must not be var()-indirect. */
+    --bg: var(--c-bg);
+    --panel: var(--c-surface-1);
+    --panel-2: var(--c-surface-2);
+    --panel-3: var(--c-surface-3);
+    --border: #202839;
+    --border-strong: var(--c-line-strong);
+    --ink: #e7ecf5;
+    --ink-dim: var(--c-fg-dim);
+    --muted: #64708a;
+    --accent: #4f8cff;
+    --accent-hi: var(--c-primary-hi);
+    --accent-soft: rgba(79, 140, 255, .13);
+    --buy: #35c37a;
+    --sell: #f0533f;
+    --hold: var(--c-warn);
+    --pos-soft: rgba(53, 195, 122, .14);
+    --neg-soft: rgba(240, 83, 63, .14);
+    --warn-soft: rgba(224, 161, 58, .14);
+    --ema: #c084fc;
+    --ema-fast: #fb923c;
+    --bb: #4f8cff;
+    --bb-fill: rgba(79, 140, 255, .42);
+
+    /* ── scales ── */
+    --r-xs: 5px;  --r-sm: 7px;  --r: 10px;  --r-lg: 14px;  --r-full: 999px;
+    --s-1: 4px;  --s-2: 8px;  --s-3: 12px;  --s-4: 16px;  --s-5: 20px;  --s-6: 24px;
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, .35);
+    --sh:    0 8px 24px -8px rgba(0, 0, 0, .55), 0 2px 6px -2px rgba(0, 0, 0, .4);
+    --sh-lg: 0 20px 48px -12px rgba(0, 0, 0, .65);
+    --t: 150ms cubic-bezier(.4, 0, .2, 1);
+    --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    --header-h: 54px;
+
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1115;
-      --panel: #171a21;
-      --ink: #e8eaed;
-      --muted: #9aa4b2;
-      --border: #262b36;
-      --accent: #60a5fa;
-      --shadow: none;
-    }
-  }
-  * { box-sizing: border-box; }
+
+  /* ── reset / base ── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
-    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font: 400 13.5px/1.5 var(--font-sans);
     background: var(--bg);
     color: var(--ink);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+  ::selection { background: var(--accent-soft); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hi); }
+  button { font-family: inherit; }
+
+  :where(button, input, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  /* thin, unobtrusive scrollbars everywhere */
+  * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-full); border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #3f4d6b; background-clip: padding-box; }
+
+  /* numeric / tabular text — no layout shift on live ticks */
+  .num, .px, .tf-pill, .wl-chg, table td, table th, #market-label, .prob {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -.01em;
+  }
+
+  /* ═══ HEADER ═══ */
   header {
-    padding: 22px clamp(16px, 4vw, 40px);
+    height: var(--header-h);
+    display: flex; align-items: center;
+    padding: 0 clamp(14px, 3vw, 26px);
     border-bottom: 1px solid var(--border);
-    background: var(--panel);
+    background: linear-gradient(180deg, var(--c-surface-2), var(--panel));
   }
-  header h1 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
-  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-  main { max-width: 1040px; margin: 0 auto; padding: clamp(16px, 4vw, 32px); }
+  .head-row { display: flex; align-items: center; gap: 14px; width: 100%; }
+  header h1 {
+    margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .14em;
+    display: flex; align-items: center; gap: 9px; color: var(--ink);
+  }
+  header h1::before {
+    content: ""; width: 9px; height: 9px; border-radius: 3px;
+    background: linear-gradient(135deg, var(--accent), var(--c-ema));
+    box-shadow: 0 0 12px var(--accent-soft);
+  }
+  .head-status { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .head-status.error { color: var(--sell); }
 
-  .controls {
-    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 14px; box-shadow: var(--shadow);
+  .market-status {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .12em; color: var(--muted);
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--r-full);
+    background: var(--panel-2);
   }
-  .controls input {
-    flex: 1 1 260px; min-width: 0;
-    padding: 9px 12px; font-size: 14px;
-    border: 1px solid var(--border); border-radius: 8px;
-    background: var(--bg); color: var(--ink);
+  #market-label { font-weight: 700; }
+  .market-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+  .market-dot.closed { background: var(--sell); box-shadow: 0 0 8px var(--neg-soft); }
+  .market-dot.open { background: var(--buy); animation: market-pulse 1.9s ease-out infinite; }
+  @keyframes market-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(53, 195, 122, .55); }
+    70%  { box-shadow: 0 0 0 8px rgba(53, 195, 122, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(53, 195, 122, 0); }
   }
-  .controls button {
-    padding: 9px 18px; font-size: 14px; font-weight: 600;
-    border: 0; border-radius: 8px; cursor: pointer;
-    background: var(--accent); color: #fff;
-  }
-  .controls button:disabled { opacity: .55; cursor: progress; }
-  .hint { color: var(--muted); font-size: 12px; margin: 8px 2px 0; }
 
-  #status { margin: 18px 2px; color: var(--muted); font-size: 14px; }
+  /* ═══ 3-PANEL LAYOUT ═══ */
+  .terminal {
+    display: grid;
+    grid-template-columns: minmax(224px, 19%) minmax(0, 1fr) minmax(300px, 26%);
+    height: calc(100vh - var(--header-h));
+  }
+  .panel { overflow-y: auto; padding: var(--s-4); }
+  .panel-left  { background: var(--panel); border-right: 1px solid var(--border); }
+  .panel-center { background: var(--bg); }
+  .panel-right { background: var(--panel); border-left: 1px solid var(--border); }
+  .panel-title {
+    margin: 0 0 var(--s-3); font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  /* ═══ LEFT · WATCHLIST ═══ */
+  .wl-search {
+    width: 100%; padding: 9px 12px; font: 500 12.5px/1 var(--font-mono);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--panel-2); color: var(--ink);
+    transition: border-color var(--t), box-shadow var(--t);
+  }
+  .wl-search::placeholder { color: var(--muted); letter-spacing: 0; }
+  .wl-search:hover { border-color: var(--border-strong); }
+
+  .watchlist { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .wl-row {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 10px 9px 12px; border-radius: var(--r-sm); cursor: pointer;
+    border: 1px solid transparent;
+    transition: background var(--t), border-color var(--t);
+  }
+  .wl-row::before {
+    content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 0; border-radius: var(--r-full); background: var(--accent);
+    transition: height var(--t);
+  }
+  .wl-row:hover { background: var(--panel-2); }
+  .wl-row.active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .wl-row.active::before { height: 18px; }
+  .wl-sym { font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
+  .wl-chg {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--r-xs);
+    min-width: 62px; text-align: right;
+  }
+  .wl-chg.pos { background: var(--pos-soft); color: var(--buy); }
+  .wl-chg.neg { background: var(--neg-soft); color: var(--sell); }
+  .wl-chg.flat { background: var(--panel-3); color: var(--muted); }
+
+  .run-btn {
+    width: 100%; margin-top: var(--s-4); padding: 11px 14px;
+    font: 700 12.5px/1 var(--font-sans); letter-spacing: .04em;
+    border: 0; border-radius: var(--r-sm); cursor: pointer;
+    color: #fff;
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .12) inset, var(--sh-sm);
+    transition: filter var(--t), transform var(--t);
+  }
+  .run-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .run-btn:active:not(:disabled) { transform: translateY(1px); }
+  .run-btn:disabled { opacity: .5; cursor: progress; }
+  .hint { color: var(--muted); font-size: 11px; line-height: 1.5; margin: var(--s-2) 2px 0; }
+
+  /* ═══ CENTER · WORKSPACE ═══ */
+  .ws-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: var(--s-3); }
+  .ws-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .ws-head .px {
+    font-size: 13px; color: var(--muted); font-family: var(--font-mono);
+    display: inline-flex; align-items: baseline; gap: 8px;
+  }
+  .ws-head .px .pos, .ws-head .px .neg {
+    font-weight: 600; padding: 2px 7px; border-radius: var(--r-xs);
+  }
+  .ws-head .px .pos { color: var(--buy); background: var(--pos-soft); }
+  .ws-head .px .neg { color: var(--sell); background: var(--neg-soft); }
+
+  #status { margin: var(--s-2) 2px; color: var(--muted); font-size: 12.5px; }
   #status.error { color: var(--sell); }
 
+  /* ═══ RIGHT · AGENT 3 ═══ */
+  .a3-section { margin: 0 0 var(--s-5); }
+  .a3-section > h3 {
+    margin: 0 0 var(--s-2); font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .a3-thesis p { font-size: 12.5px; line-height: 1.65; margin: var(--s-2) 0; color: var(--ink-dim); }
+
+  /* ═══ SHARED · CARD ═══ */
   .card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 18px; margin-top: 18px; box-shadow: var(--shadow);
+    border-radius: var(--r); padding: var(--s-4); margin-top: var(--s-4);
+    box-shadow: var(--sh-sm);
   }
-  .card h2 { margin: 0 0 12px; font-size: 15px; }
+  .card h2 { margin: 0 0 var(--s-3); font-size: 14px; font-weight: 700; }
 
-  .verdict { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  /* ═══ VERDICT BADGE ═══ */
+  .verdict { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: var(--s-4); }
   .badge {
-    font-size: 20px; font-weight: 800; letter-spacing: .02em;
-    padding: 4px 14px; border-radius: 999px; color: #fff;
+    font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: var(--r-xs); border: 1px solid transparent;
   }
-  .badge.Buy { background: var(--buy); }
-  .badge.Sell { background: var(--sell); }
-  .badge.Hold { background: var(--hold); }
+  .badge.Buy  { color: var(--buy);  background: var(--pos-soft);  border-color: color-mix(in srgb, var(--buy) 35%, transparent); }
+  .badge.Sell { color: var(--sell); background: var(--neg-soft);  border-color: color-mix(in srgb, var(--sell) 35%, transparent); }
+  .badge.Hold { color: var(--hold); background: var(--warn-soft); border-color: color-mix(in srgb, var(--hold) 35%, transparent); }
+  .verdict h2 { font-size: 16px; font-weight: 800; }
   .verdict .meta { color: var(--muted); font-size: 12px; }
-  .thesis { margin: 14px 0 0; padding-left: 20px; }
-  .thesis li { margin: 6px 0; }
+
   .warn {
-    margin-top: 12px; padding: 10px 12px; border-radius: 8px;
-    background: color-mix(in srgb, var(--hold) 14%, transparent);
-    color: var(--hold); font-size: 13px;
+    margin-top: var(--s-3); padding: 10px 12px; border-radius: var(--r-sm);
+    background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--hold) 30%, transparent);
+    color: var(--hold); font-size: 12.5px;
   }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  /* ═══ TABLES ═══ */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border); }
   th:first-child, td:first-child { text-align: left; }
-  th { color: var(--muted); font-weight: 600; }
+  th { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+  tr:last-child td { border-bottom: 0; }
   td.pos { color: var(--buy); }
   td.neg { color: var(--sell); }
 
-  .chart-wrap { position: relative; height: 300px; }
-  .chart-wrap.short { height: 220px; }
-
-  .ticker-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .ticker-head .px { font-size: 13px; color: var(--muted); }
-
-  details { margin-top: 18px; }
-  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-  pre {
-    overflow-x: auto; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5;
+  /* ═══ CHART PANES (lightweight-charts) ═══ */
+  .chart-slot { position: relative; min-height: 60px; transition: opacity var(--t); }
+  .chart-slot.is-loading { opacity: .4; pointer-events: none; }
+  .lw-wrap { position: relative; width: 100%; }
+  .lw-wrap.price {
+    height: 340px;
+    border: 1px solid var(--border); border-radius: var(--r);
+    background: var(--panel); overflow: hidden;
   }
-  .failed { color: var(--sell); font-size: 13px; margin: 4px 0; }
-
-  /* ---- Agent 3 three-section report ---- */
-  .card h3 {
-    margin: 22px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--muted);
+  .lw-wrap.sub {
+    height: 148px; margin-top: 6px; overflow: hidden;
+    border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
+    transition: height .26s var(--t), margin-top .26s var(--t), opacity .2s var(--t), border-width .26s var(--t);
   }
-  .report .badge { font-size: 17px; padding: 3px 12px; }
-  .report h3:first-of-type { margin-top: 16px; }
-  .thesis-prose p { margin: 8px 0; font-size: 13.5px; line-height: 1.6; }
+  .lw-wrap.sub.collapsed { height: 0; margin-top: 0; opacity: 0; border-width: 0; pointer-events: none; }
+  .lw-legend {
+    position: absolute; top: 8px; left: 10px; z-index: 3;
+    font-size: 10.5px; font-weight: 600; color: var(--muted); pointer-events: none;
+    display: flex; gap: 12px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+    padding: 3px 8px; border-radius: var(--r-xs); backdrop-filter: blur(3px);
+  }
+  .lw-legend .k-close  { color: var(--ink); }
+  .lw-legend .k-ma50   { color: var(--ink); }
+  .lw-legend .k-ma200  { color: var(--muted); }
+  .lw-legend .k-ema9   { color: var(--ema-fast); }
+  .lw-legend .k-ema20  { color: var(--ema); }
+  .lw-legend .k-bb     { color: var(--bb); }
+  .lw-legend .k-vol    { color: var(--muted); }
+  .lw-legend .k-rsi    { color: var(--accent); }
+  .lw-legend .k-macd   { color: var(--accent); }
+  .lw-legend .k-macdsig { color: var(--sell); }
+  .lw-legend .k-macdhist { color: var(--muted); }
 
+  /* ═══ TIMEFRAME · SEGMENTED CONTROL ═══ */
+  .timeframe-bar {
+    display: inline-flex; gap: 2px; margin: 0 0 var(--s-3);
+    padding: 3px; border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--panel-2);
+  }
+  .tf-pill {
+    padding: 5px 12px; font: 600 11.5px/1 var(--font-mono);
+    border: 0; border-radius: var(--r-xs); background: transparent; color: var(--muted);
+    cursor: pointer; transition: background var(--t), color var(--t);
+  }
+  .tf-pill:hover { color: var(--ink); }
+  .tf-pill.active { background: var(--accent); color: #fff; }
+
+  /* ═══ INDICATOR PILLS ═══ */
+  .indicator-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: var(--s-4) 0 var(--s-2); }
+  .pill {
+    padding: 5px 12px; font: 600 11.5px/1 var(--font-sans); letter-spacing: .01em;
+    border: 1px solid var(--border); border-radius: var(--r-full);
+    background: var(--panel-2); color: var(--muted); cursor: pointer;
+    transition: background var(--t), color var(--t), border-color var(--t);
+  }
+  .pill:hover { color: var(--ink); border-color: var(--border-strong); }
+  .pill.active {
+    background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--accent-hi);
+  }
+
+  /* ═══ AI INSIGHT GRID ═══ */
+  .insights-grid { display: grid; grid-template-columns: 1fr; gap: var(--s-3); margin-top: var(--s-4); }
+  @media (min-width: 780px)  { .insights-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1280px) { .insights-grid { grid-template-columns: repeat(3, 1fr); } }
+  .insights-grid:empty { display: none; }
+  .insight-card {
+    display: flex; flex-direction: column; min-height: 128px;
+    padding: 13px 15px; border-radius: var(--r);
+    border: 1px solid var(--border); background: var(--panel-2);
+    font-size: 12.5px; line-height: 1.55;
+    animation: fade-up .18s var(--t);
+  }
+  @keyframes fade-up { from { opacity: 0; transform: translateY(4px); } }
+  .insight-card .insight-title {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 7px;
+  }
+  .insight-card .insight-body { color: var(--ink-dim); }
+  .insight-card.is-loading .insight-body { color: var(--muted); }
+  .insight-card .verdict-tag { font-weight: 800; margin-right: 5px; }
+  .insight-card .verdict-tag.Buy  { color: var(--buy); }
+  .insight-card .verdict-tag.Sell { color: var(--sell); }
+  .insight-card .verdict-tag.Hold { color: var(--hold); }
+  .spinner {
+    display: inline-block; width: 12px; height: 12px; vertical-align: -2px; margin-right: 7px;
+    border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ═══ AGENT 3 · CATALYST TIMELINE ═══ */
   .timeline { list-style: none; margin: 0; padding: 0; }
-  .timeline li {
-    border-left: 2px solid var(--border); padding: 0 0 14px 14px; position: relative;
-  }
+  .timeline li { border-left: 2px solid var(--border); padding: 0 0 14px 16px; position: relative; }
   .timeline li::before {
-    content: ""; position: absolute; left: -5px; top: 4px;
-    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    content: ""; position: absolute; left: -5px; top: 3px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
   }
-  .timeline li:last-child { padding-bottom: 0; }
-  .timeline .date { font-weight: 700; font-size: 13px; }
-  .timeline .headline { font-size: 13px; }
-  .timeline .headline a { color: var(--accent); }
-  .timeline .react { font-size: 12.5px; color: var(--ink); margin-top: 2px; }
-  .timeline .react b, .timeline .cause b { color: var(--muted); font-weight: 600; }
-  .timeline .cause { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .timeline li:last-child { padding-bottom: 0; border-left-color: transparent; }
+  .timeline .date { font: 600 11px/1.4 var(--font-mono); color: var(--ink); }
+  .timeline .headline { font-size: 12.5px; margin-top: 2px; color: var(--ink-dim); }
+  .timeline .react, .timeline .cause { font-size: 11.5px; margin-top: 3px; color: var(--muted); }
+  .timeline .react b, .timeline .cause b { color: var(--ink-dim); font-weight: 600; }
 
-  table.scen { font-size: 12.5px; margin-top: 4px; }
-  table.scen th, table.scen td { text-align: left; vertical-align: top; }
-  table.scen td:first-child { white-space: nowrap; font-weight: 700; }
+  /* ═══ AGENT 3 · SCENARIO MATRIX ═══ */
+  table.scen { font-size: 11.5px; margin-top: 4px; }
+  table.scen th, table.scen td { text-align: left; vertical-align: top; padding: 7px 8px; }
+  table.scen td:first-child { white-space: nowrap; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; }
   table.scen .bull { color: var(--buy); }
   table.scen .bear { color: var(--sell); }
   table.scen .base { color: var(--hold); }
-  table.scen .prob { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.scen .prob { text-align: right; white-space: nowrap; color: var(--ink-dim); }
 
-  .risks { margin: 6px 0 0; padding-left: 20px; }
-  .risks li { margin: 5px 0; font-size: 13px; }
+  .risks { margin: var(--s-2) 0 0; padding-left: 18px; }
+  .risks li { margin: 5px 0; font-size: 12px; color: var(--ink-dim); }
 
-  .headlines { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; }
-  .headlines li { margin: 4px 0; color: var(--muted); }
-  .headlines a { color: var(--accent); }
-  .headlines .d { font-variant-numeric: tabular-nums; }
+  .headlines { list-style: none; margin: var(--s-3) 0 0; padding: 0; font-size: 11.5px; }
+  .headlines li { margin: 5px 0; color: var(--muted); line-height: 1.5; }
+  .headlines .d { font-family: var(--font-mono); color: var(--ink-dim); }
+
+  /* ═══ DETAILS / RAW JSON ═══ */
+  details { margin-top: var(--s-4); }
+  summary {
+    cursor: pointer; color: var(--muted); font-size: 11.5px; font-weight: 600;
+    letter-spacing: .04em; list-style: none; padding: 6px 0;
+  }
+  summary:hover { color: var(--ink); }
+  summary::before { content: "▸ "; }
+  details[open] summary::before { content: "▾ "; }
+  pre {
+    overflow-x: auto; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 12px; font: 11px/1.5 var(--font-mono);
+    color: var(--ink-dim);
+  }
+  .failed { color: var(--sell); font-size: 12px; margin: 4px 0; }
+
+  .card h3 {
+    margin: var(--s-5) 0 var(--s-2); font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .report h3:first-of-type { margin-top: var(--s-3); }
+  .thesis-prose p { margin: var(--s-2) 0; font-size: 12.5px; line-height: 1.65; color: var(--ink-dim); }
+  .chart-wrap { position: relative; height: 300px; }
+  .chart-wrap.short { height: 220px; }
+
+  /* ═══ RESPONSIVE — stack panels below 960px ═══ */
+  @media (max-width: 960px) {
+    body { overflow: auto; }
+    .terminal { grid-template-columns: 1fr; height: auto; }
+    .panel { max-height: none; }
+    .panel-left { border-right: 0; border-bottom: 1px solid var(--border); }
+    .panel-right { border-left: 0; border-top: 1px solid var(--border); }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>Stock Analysis Agent</h1>
-  <p>Agents&nbsp;1&ndash;2.5 (prices ∥ SEC filings ∥ Tavily news) → Agent&nbsp;3 (Gemini) → per-ticker thesis, dated catalyst timeline &amp; scenario matrix</p>
+  <div class="head-row">
+    <h1>STOCK TERMINAL</h1>
+    <span class="market-status">
+      <span id="market-dot" class="market-dot closed" title="Market status unknown"></span>
+      <span id="market-label" class="num">—</span>
+    </span>
+    <span id="status" class="head-status" hidden></span>
+  </div>
 </header>
 
-<main>
-  <div class="controls">
-    <input id="tickers" type="text" value="AAPL, NVDA, MSFT"
-           placeholder="Comma-separated tickers, e.g. AAPL, NVDA, MSFT"
-           autocomplete="off" spellcheck="false" />
-    <button id="run">Analyze</button>
-  </div>
-  <p class="hint">A full run fetches live prices, SEC filings and news, then calls the LLM for a per-ticker report — allow up to ~90&nbsp;seconds.</p>
+<div class="terminal">
+  <aside class="panel panel-left">
+    <p class="panel-title">Watchlist</p>
+    <input id="ticker-search" class="wl-search num" type="text"
+           placeholder="Search / add ticker (Enter)" autocomplete="off" spellcheck="false" />
+    <ul id="watchlist" class="watchlist"></ul>
+    <button id="run" class="run-btn">Run full analysis</button>
+    <p class="hint">Full run = prices ∥ SEC ∥ news → Gemini. ~90s.</p>
+  </aside>
 
-  <div id="status" hidden></div>
-  <div id="results"></div>
-</main>
+  <section class="panel panel-center">
+    <div class="ws-head">
+      <h2 id="ws-ticker">—</h2>
+      <span id="ws-px" class="px num"></span>
+    </div>
+    <div id="ws-timeframe"></div>
+    <div id="ws-chart" class="chart-slot"></div>
+    <div id="ws-indicators"></div>
+  </section>
+
+  <aside class="panel panel-right">
+    <p class="panel-title">Agent 3 · Intelligence</p>
+    <div id="agent3"><p class="hint">Run a full analysis to populate the thesis, catalyst timeline and scenario matrix.</p></div>
+  </aside>
+</div>
 
 <script>
 const $ = (sel) => document.querySelector(sel);
-const charts = [];
+const charts = [];      // Chart.js instances
+const lwCharts = [];     // { chart, el } for lightweight-charts instances
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString(undefined, { style: "currency", currency: "USD" });
 const fmtPct = (v) => v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 const fmtRSI = (v) => {
@@ -188,108 +492,238 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
 
+// A price_history `date` is a bare "YYYY-MM-DD" for daily timeframes (pass
+// straight to lightweight-charts as a business day) or a full ISO-8601 string
+// for intraday (convert to the UTC epoch **seconds** the library wants).
+function toChartTime(d) {
+  return /[T ]\d/.test(d) ? Math.floor(Date.parse(d) / 1000) : d;
+}
+
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 function destroyCharts() {
   while (charts.length) charts.pop().destroy();
+  while (lwCharts.length) {
+    const item = lwCharts.pop();
+    try { item.ro && item.ro.disconnect(); } catch (_) { /* no observer */ }
+    try { item.chart.remove(); } catch (_) { /* already gone */ }
+  }
 }
 
-async function analyze() {
-  const raw = $("#tickers").value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-  const tickers = [...new Set(raw)];
-  if (!tickers.length) { setStatus("Enter at least one ticker.", true); return; }
+function setStatus(msg, isError = false) {
+  const el = $("#status");
+  if (!el) return;
+  el.hidden = !msg;
+  el.textContent = msg || "";
+  el.classList.toggle("error", isError);
+}
 
+// ── terminal state ─────────────────────────────────────────────────────────
+const DEFAULT_WATCHLIST = [
+  "AAPL", "NVDA", "MSFT", "TSLA", "SMCI",
+  "AMD", "MRNA", "WOLF", "ASTS", "MARA", "CVNA",
+];
+const appState = {
+  tickers: [...DEFAULT_WATCHLIST],   // watchlist symbols
+  active: DEFAULT_WATCHLIST[0],      // selected ticker
+  timeframe: "6M",
+  summaries: {},                     // sym -> TickerSummary (Agent 1)
+  quotes: {},                        // sym -> { price, change_pct, ... }
+  news: {},                          // sym -> TickerNews
+  decision: null,                    // DecisionReport (Agent 3)
+  fundamental: null,
+  chart: null,                       // active chart controller
+};
+
+// ── left panel: watchlist ──────────────────────────────────────────────────
+function renderWatchlist() {
+  const ul = $("#watchlist");
+  if (!ul) return;
+  const filter = ($("#ticker-search").value || "").trim().toUpperCase();
+  ul.innerHTML = "";
+  appState.tickers
+    .filter((s) => !filter || s.includes(filter))
+    .forEach((sym) => {
+      const li = document.createElement("li");
+      li.className = "wl-row" + (sym === appState.active ? " active" : "");
+      li.dataset.sym = sym;
+      const q = appState.quotes[sym];
+      const chg = q && q.change_pct != null ? q.change_pct : null;
+      const cls = chg == null ? "flat" : chg >= 0 ? "pos" : "neg";
+      li.innerHTML =
+        `<span class="wl-sym num">${esc(sym)}</span>` +
+        `<span class="wl-chg num ${cls}">${chg == null ? "—" : fmtPct(chg)}</span>`;
+      li.addEventListener("click", () => selectTicker(sym));
+      ul.appendChild(li);
+    });
+}
+
+async function selectTicker(sym) {
+  if (!sym) return;
+  appState.active = sym;
+  renderWatchlist();
+  renderAgent3();
+  await renderWorkspace();
+}
+
+// ── center panel: workspace ────────────────────────────────────────────────
+async function renderWorkspace() {
+  const sym = appState.active;
+  const slot = $("#ws-chart");
+  const tfHost = $("#ws-timeframe");
+  const indHost = $("#ws-indicators");
+  $("#ws-ticker").textContent = sym || "—";
+
+  if (appState.chart && appState.chart.destroy) { appState.chart.destroy(); }
+  appState.chart = null;
+  tfHost.innerHTML = "";
+  indHost.innerHTML = "";
+  tfHost.appendChild(timeframeBar());
+
+  let summary = appState.summaries[sym];
+  if (!summary || summary.timeframe !== appState.timeframe) {
+    slot.classList.add("is-loading");
+    slot.innerHTML = `<p class="hint">Loading ${esc(sym)} · ${esc(appState.timeframe)} …</p>`;
+    try {
+      summary = await fetchQuant(sym, appState.timeframe);
+      appState.summaries[sym] = summary;
+    } catch (err) {
+      slot.classList.remove("is-loading");
+      slot.innerHTML = `<p class="hint">Couldn't load ${esc(sym)} — ${esc(err.message)}</p>`;
+      return;
+    }
+    slot.classList.remove("is-loading");
+  }
+
+  drawChartInto(slot, summary);
+  appState.chart = slot._chartController || null;
+  updateWsPrice();
+
+  if (appState.chart) {
+    indHost.appendChild(indicatorPanel(appState.chart, {
+      ticker: sym, series: summary.price_history || [],
+    }));
+  }
+  const news = appState.news[sym];
+  if (news && (news.items || []).length) appendHeadlines(indHost, news);
+}
+
+function updateWsPrice() {
+  const el = $("#ws-px");
+  if (!el) return;
+  const sym = appState.active;
+  const q = appState.quotes[sym];
+  const s = appState.summaries[sym];
+  if (q && q.price != null) {
+    const cls = (q.change_pct ?? 0) >= 0 ? "pos" : "neg";
+    el.innerHTML = `${fmtUSD(q.price)} <span class="${cls}">${q.change_pct == null ? "" : fmtPct(q.change_pct)}</span>`;
+  } else if (s) {
+    const cls = s.pct_return >= 0 ? "pos" : "neg";
+    el.innerHTML = `${fmtUSD(s.latest_close)} <span class="${cls}">${fmtPct(s.pct_return)}</span> · ${esc(s.timeframe)}`;
+  } else {
+    el.textContent = "";
+  }
+}
+
+// ── right panel: Agent 3 intelligence ─────────────────────────────────────
+function renderAgent3() {
+  const host = $("#agent3");
+  if (!host) return;
+  host.innerHTML = "";
+  const d = appState.decision;
+  const sym = appState.active;
+
+  if (!d) {
+    host.innerHTML = `<p class="hint">Run a full analysis to populate the thesis, catalyst timeline and scenario matrix.</p>`;
+    return;
+  }
+  if (d.error) {
+    host.insertAdjacentHTML("beforeend", `<div class="warn">⚠ Agent 3 degraded: ${esc(d.error)}</div>`);
+  }
+  const r = (d.reports || []).find((x) => x.ticker === sym);
+  if (r) host.appendChild(agent3Report(r));
+  else host.insertAdjacentHTML("beforeend", `<p class="hint">No Agent 3 report for ${esc(sym)}.</p>`);
+
+  if ((d.cross_cutting_risks || []).length) {
+    host.insertAdjacentHTML("beforeend",
+      `<div class="a3-section"><h3>Cross-cutting risks</h3><ul class="risks">${
+        d.cross_cutting_risks.map((x) => `<li>${esc(x)}</li>`).join("")
+      }</ul></div>`);
+  }
+  if (d.model) {
+    host.insertAdjacentHTML("beforeend",
+      `<p class="hint num">${esc(d.model)}${d.generated_at ? " · " + new Date(d.generated_at).toLocaleString() : ""}</p>`);
+  }
+  if (d.critic_notes) host.appendChild(rawDetails("Critic notes", d.critic_notes));
+  if (appState.fundamental) host.appendChild(rawDetails("Fundamental report (Agent 2)", appState.fundamental));
+}
+
+function agent3Report(r) {
+  const wrap = document.createElement("div");
+  const rec = r.recommendation || "Hold";
+  wrap.innerHTML = `
+    <div class="verdict">
+      <span class="badge ${esc(rec)}">${esc(rec)}</span>
+      <h2 style="margin:0">${esc(r.ticker)}</h2>
+    </div>
+    <div class="a3-section">
+      <h3>Executive thesis</h3>
+      <div class="a3-thesis">${
+        String(r.executive_thesis || "").split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`).join("")
+      }</div>
+    </div>
+    <div class="a3-section">
+      <h3>Dated catalyst timeline</h3>
+      ${(r.catalyst_timeline || []).length
+        ? `<ul class="timeline">${(r.catalyst_timeline || []).map(catalystRow).join("")}</ul>`
+        : `<p class="hint">No dated catalysts for this ticker.</p>`}
+    </div>
+    <div class="a3-section">
+      <h3>Probabilistic scenario matrix</h3>
+      ${scenarioTable(r.scenarios || [])}
+      ${(r.downside_risks || []).length
+        ? `<ul class="risks">${(r.downside_risks || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
+        : ""}
+    </div>`;
+  return wrap;
+}
+
+// ── full pipeline run ──────────────────────────────────────────────────────
+async function runFullAnalysis() {
+  const tickers = appState.tickers;
+  if (!tickers.length) { setStatus("Watchlist is empty.", true); return; }
   $("#run").disabled = true;
-  destroyCharts();
-  $("#results").innerHTML = "";
-  setStatus(`Running the pipeline for ${tickers.join(", ")} … this can take up to ~90s.`);
+  insightCache = {};                 // fresh prices → drop last run's insights
+  setStatus(`Running pipeline for ${tickers.length} tickers … ~90s.`);
 
   const started = performance.now();
   try {
     const res = await fetch("analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tickers }),
+      body: JSON.stringify({ tickers, timeframe: appState.timeframe }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    const st = data.state || {};
+    (st.historical_data || []).forEach((h) => { appState.summaries[h.ticker] = h; });
+    (st.news_context || []).forEach((n) => { appState.news[n.ticker] = n; });
+    appState.decision = st.final_decision || null;
+    appState.fundamental = st.fundamental_report || null;
+    (st.failed_tickers || []).forEach((f) => console.warn(`[analyze] ${f.ticker}: ${f.error}`));
+
     const secs = ((performance.now() - started) / 1000).toFixed(1);
-    setStatus(`Done in ${secs}s · status: ${data.status}`);
-    render(data.state);
+    setStatus(`Done in ${secs}s · ${data.status}`);
+    renderWatchlist();
+    renderAgent3();
+    await renderWorkspace();
   } catch (err) {
     setStatus(`Request failed: ${err.message}`, true);
   } finally {
     $("#run").disabled = false;
   }
-}
-
-function setStatus(msg, isError = false) {
-  const el = $("#status");
-  el.hidden = false;
-  el.textContent = msg;
-  el.classList.toggle("error", isError);
-}
-
-function render(state) {
-  const root = $("#results");
-  const decision = state.final_decision;
-  const newsByTicker = {};
-  (state.news_context || []).forEach((n) => { newsByTicker[n.ticker] = n; });
-
-  if (decision && decision.error) {
-    const c = card("");
-    c.innerHTML = `<div class="warn">⚠ Agent 3 degraded: ${esc(decision.error)}</div>`;
-    root.appendChild(c);
-  }
-
-  const reports = (decision && decision.reports) || [];
-  reports.forEach((r) => root.appendChild(reportCard(r)));
-
-  if (decision && (decision.cross_cutting_risks || []).length) {
-    const c = card("Cross-cutting risks");
-    c.innerHTML += `<ul class="risks">${
-      decision.cross_cutting_risks.map((x) => `<li>${esc(x)}</li>`).join("")
-    }</ul>`;
-    root.appendChild(c);
-  }
-
-  const hist = state.historical_data || [];
-  if (hist.length) {
-    root.appendChild(returnsCard(hist));
-    root.appendChild(metricsCard(hist));
-    hist.forEach((h) => root.appendChild(tickerCard(h, newsByTicker[h.ticker])));
-  }
-
-  const failed = state.failed_tickers || [];
-  if (failed.length) {
-    const c = card("Could not process");
-    failed.forEach((f) => {
-      const p = document.createElement("p");
-      p.className = "failed";
-      p.textContent = `${f.ticker}: ${f.error}`;
-      c.appendChild(p);
-    });
-    root.appendChild(c);
-  }
-
-  if (decision) {
-    const meta = decision.model
-      ? `${decision.model}${decision.generated_at ? " · " + new Date(decision.generated_at).toLocaleString() : ""}`
-      : "";
-    if (meta) {
-      const p = document.createElement("p");
-      p.className = "hint";
-      p.textContent = `Report by ${meta}`;
-      root.appendChild(p);
-    }
-    if (decision.critic_notes) {
-      root.appendChild(rawDetails("Critic notes (Agent 3 reflection pass)", decision.critic_notes));
-    }
-  }
-  root.appendChild(rawDetails("Fundamental report (Agent 2)", state.fundamental_report || "(none)"));
-  root.appendChild(rawDetails("Full response JSON", JSON.stringify(state, null, 2)));
 }
 
 const CASE_LABEL = { bull: "Bull", base: "Base", bear: "Bear" };
@@ -418,45 +852,668 @@ function returnsCard(hist) {
   return c;
 }
 
-function tickerCard(h, news) {
-  const c = card("");
-  const head = document.createElement("div");
-  head.className = "ticker-head";
-  head.innerHTML = `<h2 style="margin:0">${esc(h.ticker)}</h2>
-    <span class="px">${fmtUSD(h.latest_close)} · ${fmtPct(h.pct_return)} · ${h.data_points} days</span>`;
-  c.appendChild(head);
+const TIMEFRAMES = ["1D", "5D", "1M", "6M", "1Y", "ALL"];
 
-  const series = h.price_history || [];
+// [1D … ALL] selector for the active ticker. Switching sets appState.timeframe
+// and re-renders the workspace, which fetches Agent 1 for the active ticker at
+// the new resolution and redraws with recalculated indicators.
+function timeframeBar() {
+  const bar = document.createElement("div");
+  bar.className = "timeframe-bar";
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", "Chart timeframe");
+  TIMEFRAMES.forEach((tf) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tf-pill num" + (tf === appState.timeframe ? " active" : "");
+    b.textContent = tf;
+    b.addEventListener("click", () => {
+      if (tf === appState.timeframe) return;
+      appState.timeframe = tf;
+      console.log(`[timeframe] ${appState.active} -> ${tf}`);
+      renderWorkspace();
+    });
+    bar.appendChild(b);
+  });
+  return bar;
+}
+
+// Agent 1 only (no LLM), one ticker, one timeframe.
+async function fetchQuant(ticker, timeframe) {
+  const res = await fetch("analyze/quantitative", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers: [ticker], timeframe }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.detail) || `HTTP ${res.status}`);
+  const st = data && data.state;
+  const summary = st && st.historical_data && st.historical_data[0];
+  if (!summary) {
+    const f = st && st.failed_tickers && st.failed_tickers[0];
+    throw new Error(f ? f.error : "no data returned");
+  }
+  return summary;
+}
+
+// (Re)build the candlestick + volume + sub-pane chart for one ticker summary
+// into `slot`, tearing down whatever chart was there before. The indicator
+// pill bar + insight grid live separately in #ws-indicators.
+function drawChartInto(slot, summary) {
+  if (slot._chartController && slot._chartController.destroy) {
+    slot._chartController.destroy();
+  }
+  slot.innerHTML = "";
+  const series = summary.price_history || [];
+  console.log(`[chart] ${summary.ticker} [${summary.timeframe}]: ${series.length} point(s)`);
   if (!series.length) {
-    const p = document.createElement("p");
-    p.className = "hint";
-    p.textContent = "No price series returned for this ticker.";
-    c.appendChild(p);
-    appendHeadlines(c, news);
-    return c;
+    slot.innerHTML = `<p class="hint">No chart data available.</p>`;
+    slot._chartController = null;
+    return;
+  }
+  slot._chartController = buildCandleCharts(slot, series);
+}
+
+// ── indicator registry ─────────────────────────────────────────────────────
+// One descriptor per toggleable overlay/pane. To add another (e.g. Bollinger):
+// append a `{ key, label, insightName, field }` here and handle the `key` in
+// buildCandleCharts()'s setIndicator(). `insightName` is the human label sent
+// to /api/analyze-indicator; `field` is the price_history key holding its
+// latest value (omitted for composite indicators like MACD).
+const INDICATORS = [
+  { key: "ma_50",  label: "MA-50",  insightName: "50-day moving average", field: "ma_50" },
+  { key: "ma_200", label: "MA-200", insightName: "200-day moving average", field: "ma_200" },
+  { key: "ema_9",  label: "EMA-9",  insightName: "9-day EMA", field: "ema_9" },
+  { key: "ema_20", label: "EMA-20", insightName: "20-day EMA", field: "ema_20" },
+  { key: "rsi",    label: "RSI",    insightName: "14-day RSI", field: "rsi_14" },
+  { key: "macd",   label: "MACD",   insightName: "MACD (12/26/9)" },
+  { key: "bb",     label: "Bollinger Bands", insightName: "Bollinger Bands (SMA-20, 2σ)" },
+  { key: "vol",    label: "Volume", noInsight: true },
+];
+
+// Latest non-null value for an indicator, pulled from the price_history array.
+// Scalars return a number; MACD returns a {macd_line, signal_line,
+// macd_histogram} object. null when the ticker has no data for it.
+function latestIndicatorValue(key, series) {
+  const lastOf = (f) => {
+    for (let i = series.length - 1; i >= 0; i--) {
+      if (series[i][f] != null) return series[i][f];
+    }
+    return null;
+  };
+  if (key === "macd") {
+    const v = { macd_line: lastOf("macd_line"), signal_line: lastOf("signal_line"), macd_histogram: lastOf("macd_histogram") };
+    return Object.values(v).every((x) => x == null) ? null : v;
+  }
+  if (key === "bb") {
+    const v = {
+      bb_upper: lastOf("bb_upper"), bb_middle: lastOf("bb_middle"),
+      bb_lower: lastOf("bb_lower"), close: lastOf("close"),
+    };
+    return v.bb_upper == null && v.bb_middle == null && v.bb_lower == null ? null : v;
+  }
+  const desc = INDICATORS.find((d) => d.key === key);
+  return desc && desc.field ? lastOf(desc.field) : null;
+}
+
+// Most recent Close in the chart data array (walk back past any null tail).
+function latestClose(series) {
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i] && series[i].close != null) return series[i].close;
+  }
+  return null;
+}
+
+const INSIGHT_MAX_ATTEMPTS = 3;
+const INSIGHT_RETRY_DELAY_MS = 1000;
+const RETRY_MSG = "Insight temporarily unavailable. Please try again later.";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// FastAPI error bodies vary: 500 → detail is a string; 422 → detail is an array
+// of {loc, msg, type}. Flatten either into a readable string (never "[object
+// Object]").
+function readApiError(payload, status) {
+  const d = payload && payload.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) return d.map((e) => (e && e.msg) || JSON.stringify(e)).join("; ");
+  if (d && typeof d === "object") return JSON.stringify(d);
+  return `HTTP ${status}`;
+}
+
+// One POST to /api/analyze-indicator. Object values (MACD, BB) are stringified
+// so the endpoint receives a plain string it can parse without choking on a
+// nested object. Returns the insight text, or throws an Error whose `.retryable`
+// flag says whether another attempt is worthwhile.
+async function requestIndicatorInsight(ticker, indicatorName, value, currentPrice) {
+  const currentValue = (value !== null && typeof value === "object")
+    ? JSON.stringify(value)
+    : value;
+
+  const res = await fetch("api/analyze-indicator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ticker,
+      indicator_name: indicatorName,
+      current_value: currentValue,
+      current_price: currentPrice,
+    }),
+  });
+
+  const payload = await res.json().catch(() => null);
+
+  if (res.ok) {
+    const text = payload && typeof payload.insight === "string" ? payload.insight : "";
+    if (!text) {
+      const e = new Error("Malformed response from insight API");
+      e.retryable = true;
+      throw e;
+    }
+    // Backend degraded to a plain notice (missing key / Gemini error) — worth
+    // one more try in case it was transient.
+    if (/^Insight unavailable:/i.test(text)) {
+      const e = new Error(text);
+      e.retryable = true;
+      throw e;
+    }
+    return text;
   }
 
-  const wrap = document.createElement("div");
-  wrap.className = "chart-wrap";
-  const canvas = document.createElement("canvas");
-  wrap.appendChild(canvas);
-  c.appendChild(wrap);
+  const e = new Error(readApiError(payload, res.status));
+  e.status = res.status;
+  e.retryable = res.status === 429 || res.status >= 500;   // rate-limit / server error
+  throw e;
+}
+
+// Retry wrapper: up to 3 attempts, 1s apart, for transient failures (429,
+// 5xx, network error, degraded backend). A non-retryable failure (400/422)
+// surfaces its parsed reason immediately; exhausting the retries yields the
+// generic "try again later" copy.
+async function fetchIndicatorInsight(ticker, indicatorName, value, currentPrice) {
+  for (let attempt = 1; attempt <= INSIGHT_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await requestIndicatorInsight(ticker, indicatorName, value, currentPrice);
+    } catch (err) {
+      const retryable = err.retryable || err instanceof TypeError;  // TypeError == network failure
+      console.warn(`[insight] attempt ${attempt}/${INSIGHT_MAX_ATTEMPTS} failed: ${err.message}` +
+        (retryable ? " (retrying)" : ""));
+      if (!retryable) throw new Error(`Insight unavailable: ${err.message}`);
+      if (attempt === INSIGHT_MAX_ATTEMPTS) throw new Error(RETRY_MSG);
+      await sleep(INSIGHT_RETRY_DELAY_MS);
+    }
+  }
+}
+
+// Render Gemini's reply, colour-coding a leading "Buy." / "Sell." / "Hold.".
+function renderInsightBody(el, text) {
+  const m = String(text).match(/^\s*(Buy|Sell|Hold)\b[.:!]?\s*/i);
+  if (m) {
+    const v = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+    el.innerHTML = `<span class="verdict-tag ${v}">${v}.</span>${esc(text.slice(m[0].length).trim())}`;
+  } else {
+    el.textContent = text;
+  }
+}
+
+// Cache of resolved insight text, keyed `${ticker}:${key}`. Stops a repeat
+// Gemini call when the user toggles the same indicator off and back on.
+// Reset per analyze() run (prices — and therefore the correct read — change).
+let insightCache = {};
+
+// Pill toggle bar + a responsive grid of runtime AI insight cards for one
+// ticker. ctx = { ticker, series }. Each indicator toggled ON injects its own
+// card (id `insight-card-<ticker>-<key>`); toggled OFF removes that card.
+function indicatorPanel(controller, ctx) {
+  const panel = document.createElement("div");
+  panel.className = "indicator-panel";
+
+  const bar = document.createElement("div");
+  bar.className = "indicator-bar";
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", "Toggle chart indicators");
+
+  // Ticker-scoped id so the grid stays unique when several ticker cards render.
+  const grid = document.createElement("div");
+  grid.id = `indicator-insights-${ctx.ticker}`;
+  grid.className =
+    "insights-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 empty:hidden";
+
+  const cardId = (key) => `insight-card-${ctx.ticker}-${key}`;
+
+  function removeInsightCard(key) {
+    const el = document.getElementById(cardId(key));
+    if (el) el.remove();                              // container :empty → hidden
+  }
+
+  async function addInsightCard(key, label, insightName) {
+    const id = cardId(key);
+    if (document.getElementById(id)) return;          // already on screen
+
+    const card = document.createElement("div");
+    card.id = id;
+    card.className = "insight-card is-loading";
+    card.innerHTML =
+      `<span class="insight-title">${esc(label)} · AI insight</span>` +
+      `<div class="insight-body"><span class="spinner"></span>Analysing ${esc(label)} for ${esc(ctx.ticker)}…</div>`;
+    grid.appendChild(card);
+    const body = card.querySelector(".insight-body");
+    const cacheKey = `${ctx.ticker}:${key}`;
+
+    // cache hit → render immediately, no network round-trip
+    if (insightCache[cacheKey] != null) {
+      card.classList.remove("is-loading");
+      renderInsightBody(body, insightCache[cacheKey]);
+      console.log(`[insight] ${cacheKey} (cache hit)`);
+      return;
+    }
+
+    const value = latestIndicatorValue(key, ctx.series);
+    const currentPrice = latestClose(ctx.series);
+    if (value == null || currentPrice == null) {
+      card.classList.remove("is-loading");
+      body.textContent = `No ${label} data available for ${ctx.ticker}.`;
+      return;
+    }
+
+    console.log(`[insight] ${cacheKey} = ${JSON.stringify(value)} @ price ${currentPrice}`);
+    try {
+      const text = await fetchIndicatorInsight(ctx.ticker, insightName, value, currentPrice);
+      insightCache[cacheKey] = text;
+      const live = document.getElementById(id);       // still toggled on?
+      if (!live) return;
+      live.classList.remove("is-loading");
+      renderInsightBody(live.querySelector(".insight-body"), text);
+      console.log(`[insight] ${cacheKey} ->`, text);
+    } catch (err) {
+      const live = document.getElementById(id);
+      if (!live) return;
+      live.classList.remove("is-loading");
+      // err.message is already a clean sentence ("Insight unavailable: …" or
+      // the generic retry-exhausted copy) — render it as-is, never an object.
+      live.querySelector(".insight-body").textContent =
+        err && typeof err.message === "string" && err.message
+          ? err.message
+          : RETRY_MSG;
+      console.error("[insight] fetch failed:", err);
+    }
+  }
+
+  INDICATORS.forEach(({ key, label, insightName, noInsight }) => {
+    const on = controller.state[key] !== false;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = on ? "pill active" : "pill";
+    btn.dataset.key = key;
+    btn.textContent = label;
+    btn.setAttribute("aria-pressed", String(on));
+    btn.addEventListener("click", () => {
+      const next = !btn.classList.contains("active");
+      btn.classList.toggle("active", next);
+      btn.setAttribute("aria-pressed", String(next));
+      console.log(`[chart] toggle ${key} -> ${next ? "on" : "off"}`);
+      try {
+        controller.setIndicator(key, next);
+      } catch (err) {
+        console.error(`[chart] setIndicator(${key}) failed:`, err);
+      }
+      if (noInsight) return;              // volume has no AI insight card
+      if (next) {
+        addInsightCard(key, label, insightName || label).catch((e) => console.error("[insight]", e));
+      } else {
+        removeInsightCard(key);
+      }
+    });
+    bar.appendChild(btn);
+  });
+
+  panel.appendChild(bar);
+  panel.appendChild(grid);
+  return panel;
+}
+
+// Candlestick price pane (close + MA-50 + MA-200 overlays) with a time-synced
+// RSI-14 sub-pane below it (70 / 30 reference lines). TradingView's
+// lightweight-charts. Returns a controller { state, setIndicator(key, on) },
+// or null when the library is missing or there is nothing to draw.
+function buildCandleCharts(container, series) {
+  const LC = window.LightweightCharts;
+  const priceWrap = document.createElement("div");
+  priceWrap.className = "lw-wrap price";
+  const rsiWrap = document.createElement("div");
+  rsiWrap.className = "lw-wrap sub rsi";
+  const macdWrap = document.createElement("div");
+  macdWrap.className = "lw-wrap sub macd";
+  container.appendChild(priceWrap);
+  container.appendChild(rsiWrap);
+  container.appendChild(macdWrap);
+
+  if (!LC || typeof LC.createChart !== "function") {
+    console.error("[chart] lightweight-charts failed to load");
+    priceWrap.innerHTML = `<p class="hint">Chart library failed to load — check the network tab.</p>`;
+    rsiWrap.remove();
+    macdWrap.remove();
+    return null;
+  }
+
+  // Split the sanitized series into per-overlay point arrays up front. `time`
+  // is the raw "YYYY-MM-DD" string for daily timeframes; for intraday ones the
+  // backend sends an ISO-8601 timestamp, which lightweight-charts needs as UTC
+  // epoch seconds (see toChartTime).
+  const T = (p) => toChartTime(p.date);
+  const candlePts = series
+    .filter((p) => ["open", "high", "low", "close"].every((k) => Number.isFinite(p[k])))
+    .map((p) => ({ time: T(p), open: p.open, high: p.high, low: p.low, close: p.close }));
+  const ma50Pts  = series.filter((p) => p.ma_50 != null).map((p) => ({ time: T(p), value: p.ma_50 }));
+  const ma200Pts = series.filter((p) => p.ma_200 != null).map((p) => ({ time: T(p), value: p.ma_200 }));
+  const ema9Pts  = series.filter((p) => p.ema_9 != null).map((p) => ({ time: T(p), value: p.ema_9 }));
+  const ema20Pts = series.filter((p) => p.ema_20 != null).map((p) => ({ time: T(p), value: p.ema_20 }));
+  const rsiPts   = series.filter((p) => p.rsi_14 != null).map((p) => ({ time: T(p), value: p.rsi_14 }));
+  const macdLinePts   = series.filter((p) => p.macd_line != null).map((p) => ({ time: T(p), value: p.macd_line }));
+  const macdSignalPts = series.filter((p) => p.signal_line != null).map((p) => ({ time: T(p), value: p.signal_line }));
+  const bbUpperPts  = series.filter((p) => p.bb_upper != null).map((p) => ({ time: T(p), value: p.bb_upper }));
+  const bbMiddlePts = series.filter((p) => p.bb_middle != null).map((p) => ({ time: T(p), value: p.bb_middle }));
+  const bbLowerPts  = series.filter((p) => p.bb_lower != null).map((p) => ({ time: T(p), value: p.bb_lower }));
+  const volPts = series
+    .filter((p) => p.volume != null)
+    .map((p) => ({ time: T(p), value: p.volume, close: p.close, open: p.open }));
+
+  console.log("[chart] building panes:", {
+    bars: candlePts.length, ma50: ma50Pts.length, ma200: ma200Pts.length,
+    ema9: ema9Pts.length, ema20: ema20Pts.length, rsi: rsiPts.length,
+    macd: macdLinePts.length, bb: bbUpperPts.length, vol: volPts.length,
+  });
+
+  if (!candlePts.length) {
+    console.warn("[chart] no usable candles in series");
+    priceWrap.innerHTML = `<p class="hint">No chart data available.</p>`;
+    rsiWrap.remove();
+    macdWrap.remove();
+    return null;
+  }
 
   const ink = cssVar("--ink"), accent = cssVar("--accent"), muted = cssVar("--muted");
-  charts.push(new Chart(canvas, {
-    type: "line",
-    data: {
-      labels: series.map((p) => p.date),
-      datasets: [
-        { label: "Close", data: series.map((p) => p.close), borderColor: accent, borderWidth: 2, pointRadius: 0, tension: .15 },
-        { label: "MA-50", data: series.map((p) => p.ma_50), borderColor: ink, borderWidth: 1, pointRadius: 0, borderDash: [5, 4] },
-        { label: "MA-200", data: series.map((p) => p.ma_200), borderColor: muted, borderWidth: 1, pointRadius: 0, borderDash: [2, 3] },
-      ],
-    },
-    options: baseOpts({ yTitle: "USD", xTicks: 8 }),
+  const grid = cssVar("--border"), buy = cssVar("--buy"), sell = cssVar("--sell");
+  const emaColor = cssVar("--ema"), emaFastColor = cssVar("--ema-fast");
+  const bbColor = cssVar("--bb"), bbFill = cssVar("--bb-fill");
+
+  const common = {
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 11 },
+    grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+    // autoScale keeps the Y-axis fitted to whatever data is on the pane — each
+    // ticker's chart is built independently, so a jump from a stable name to a
+    // volatile one (SMCI, MRNA, MARA) just re-fits. The generous margins give
+    // roughly a fifth of the pane as padding above/below, so a 20–30% single
+    // day wick never clips the top/bottom edge.
+    rightPriceScale: { borderColor: grid, autoScale: true, scaleMargins: { top: 0.16, bottom: 0.14 } },
+    timeScale: { borderColor: grid, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true },
+    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
+  };
+
+  // Fixed sub-pane height (matches the .lw-wrap.sub CSS) so the RSI / MACD
+  // panes can collapse via a CSS height transition without the canvas resizing.
+  const SUB_H = 150;
+
+  // Fall back to a sane width: the card is still detached from the DOM here, so
+  // clientWidth is 0 — the ResizeObserver below fixes the real width once it is
+  // attached and laid out.
+  const priceChart = LC.createChart(priceWrap, {
+    ...common, width: priceWrap.clientWidth || 640, height: priceWrap.clientHeight || 320,
+  });
+  const rsiChart = LC.createChart(rsiWrap, {
+    ...common, width: rsiWrap.clientWidth || 640, height: SUB_H,
+  });
+
+  const candle = priceChart.addCandlestickSeries({
+    upColor: buy, downColor: sell, borderUpColor: buy, borderDownColor: sell,
+    wickUpColor: buy, wickDownColor: sell,
+  });
+  candle.setData(candlePts);
+
+  // ── Volume histogram: overlaid on the bottom ~18% of the price pane via its
+  //    own hidden overlay price-scale ("vol"), so it shares the time axis but
+  //    not the price axis. Up bar (close ≥ open) green, down bar red, ~40% α. ──
+  const volume = priceChart.addHistogramSeries({
+    priceScaleId: "vol", priceLineVisible: false, lastValueVisible: false,
+  });
+  priceChart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+  volume.setData(volPts.map((p) => ({
+    time: p.time, value: p.value,
+    color: (p.close >= p.open ? buy : sell) + "66",
+  })));
+
+  // MA-50 / MA-200 are excluded from the price-scale autoscale
+  // (`autoscaleInfoProvider: () => null`): for an asset that has 3–5×'d (MARA,
+  // ASTS), a trailing SMA sits far from the current price and, left in the
+  // autoscale set, would compress the candles into a thin band. The candles
+  // plus the price-tracking overlays (EMA-9/20, Bollinger) drive the scale;
+  // the slow SMAs still draw and just run off-edge when they are far away.
+  const noAutoscale = { autoscaleInfoProvider: () => null };
+
+  const ma50 = priceChart.addLineSeries({
+    color: ink, lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false, ...noAutoscale,
+  });
+  ma50.setData(ma50Pts);
+
+  const ma200 = priceChart.addLineSeries({
+    color: muted, lineWidth: 1, lineStyle: LC.LineStyle ? LC.LineStyle.Dashed : 2,
+    priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+    ...noAutoscale,
+  });
+  ma200.setData(ma200Pts);
+
+  const ema9 = priceChart.addLineSeries({
+    color: emaFastColor, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  ema9.setData(ema9Pts);
+
+  const ema20 = priceChart.addLineSeries({
+    color: emaColor, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  ema20.setData(ema20Pts);
+
+  // ── Bollinger Bands (SMA-20 ± 2σ) — three semi-transparent light-blue
+  //    overlays on the price pane; toggled as one group. lightweight-charts v4
+  //    has no band-fill primitive, so the channel is drawn as lines only. ──
+  const bbLineOpts = {
+    lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+  };
+  const bbUpper = priceChart.addLineSeries({ ...bbLineOpts, color: bbFill });
+  bbUpper.setData(bbUpperPts);
+  const bbLower = priceChart.addLineSeries({ ...bbLineOpts, color: bbFill });
+  bbLower.setData(bbLowerPts);
+  const bbMiddle = priceChart.addLineSeries({
+    ...bbLineOpts, color: bbColor, lineStyle: LC.LineStyle ? LC.LineStyle.Dotted : 1,
+  });
+  bbMiddle.setData(bbMiddlePts);
+
+  rsiChart.priceScale("right").applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+  const rsi = rsiChart.addLineSeries({
+    color: accent, lineWidth: 2, priceLineVisible: false,
+    autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+  });
+  rsi.setData(rsiPts);
+
+  const dash = LC.LineStyle ? LC.LineStyle.Dashed : 2;
+  rsi.createPriceLine({ price: 70, color: sell, lineWidth: 1, lineStyle: dash, axisLabelVisible: true, title: "70" });
+  rsi.createPriceLine({ price: 30, color: buy, lineWidth: 1, lineStyle: dash, axisLabelVisible: true, title: "30" });
+
+  // ── MACD (12/26/9) sub-pane: histogram bars + MACD line + signal line ──
+  const macdHistPts = series
+    .filter((p) => p.macd_histogram != null)
+    .map((p) => ({ time: T(p), value: p.macd_histogram, color: p.macd_histogram >= 0 ? buy : sell }));
+
+  const macdChart = LC.createChart(macdWrap, {
+    ...common, width: macdWrap.clientWidth || 640, height: SUB_H,
+  });
+  macdChart.priceScale("right").applyOptions({ scaleMargins: { top: 0.12, bottom: 0.12 } });
+
+  const macdHist = macdChart.addHistogramSeries({
+    priceLineVisible: false, lastValueVisible: false, base: 0,
+  });
+  macdHist.setData(macdHistPts);
+
+  const macdLine = macdChart.addLineSeries({
+    color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+  });
+  macdLine.setData(macdLinePts);
+
+  const macdSignal = macdChart.addLineSeries({
+    color: sell, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  macdSignal.setData(macdSignalPts);
+
+  macdLine.createPriceLine({ price: 0, color: muted, lineWidth: 1, lineStyle: dash, axisLabelVisible: false });
+
+  // legends
+  priceWrap.insertAdjacentHTML("beforeend",
+    `<div class="lw-legend"><b class="k-close">Candles</b>` +
+    `<b class="k-ma50">— MA-50</b><b class="k-ma200">-- MA-200</b>` +
+    `<b class="k-ema9">— EMA-9</b><b class="k-ema20">— EMA-20</b>` +
+    `<b class="k-bb">≈ Bollinger (20, 2σ)</b><b class="k-vol">▮ Volume</b></div>`);
+  rsiWrap.insertAdjacentHTML("beforeend", `<div class="lw-legend"><b class="k-rsi">RSI-14</b></div>`);
+  macdWrap.insertAdjacentHTML("beforeend",
+    `<div class="lw-legend"><b class="k-macd">— MACD</b>` +
+    `<b class="k-macdsig">— Signal</b><b class="k-macdhist">▮ Histogram (12/26/9)</b></div>`);
+
+  // ── keep all three time axes locked together ──
+  const panes = [priceChart, rsiChart, macdChart];
+  let syncing = false;
+  panes.forEach((src) => src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+    if (syncing || !range) return;
+    syncing = true;
+    try {
+      for (const dst of panes) if (dst !== src) dst.timeScale().setVisibleLogicalRange(range);
+    } catch (err) {
+      console.error("[chart] range sync failed:", err);
+    }
+    syncing = false;
   }));
-  appendHeadlines(c, news);
-  return c;
+
+  // ── crosshair sync (best-effort; keyed on the ISO date string) ──
+  const closeByTime = new Map(series.map((p) => [toChartTime(p.date), p.close]));
+  const rsiByTime = new Map(rsiPts.map((p) => [p.time, p.value]));
+  const macdByTime = new Map(macdLinePts.map((p) => [p.time, p.value]));
+  const mirrorCrosshair = (from, targets) => from.subscribeCrosshairMove((param) => {
+    const t = param && param.time != null ? param.time : null;
+    for (const { chart, byTime, series: s } of targets) {
+      const v = t != null ? byTime.get(t) : undefined;
+      if (v == null) chart.clearCrosshairPosition();
+      else chart.setCrosshairPosition(v, t, s);
+    }
+  });
+  mirrorCrosshair(priceChart, [
+    { chart: rsiChart, byTime: rsiByTime, series: rsi },
+    { chart: macdChart, byTime: macdByTime, series: macdLine },
+  ]);
+  mirrorCrosshair(rsiChart, [
+    { chart: priceChart, byTime: closeByTime, series: candle },
+    { chart: macdChart, byTime: macdByTime, series: macdLine },
+  ]);
+  mirrorCrosshair(macdChart, [
+    { chart: priceChart, byTime: closeByTime, series: candle },
+    { chart: rsiChart, byTime: rsiByTime, series: rsi },
+  ]);
+
+  // ── size each pane to its container: fires once on DOM attach (0 → real
+  //    width, the fix for the blank chart), on window resize, and whenever a
+  //    sub-pane is toggled back in. Sub-panes keep a fixed height (SUB_H) so
+  //    the CSS collapse animation is smooth. ──
+  let fitted = false;
+  const sizeWidth = (chart, el, h) => {
+    const w = el.clientWidth;
+    if (w > 0) chart.applyOptions({ width: w, height: h });
+  };
+  const relayout = () => {
+    sizeWidth(priceChart, priceWrap, priceWrap.clientHeight || 320);
+    sizeWidth(rsiChart, rsiWrap, SUB_H);
+    sizeWidth(macdChart, macdWrap, SUB_H);
+    if (!fitted && priceWrap.clientWidth > 0) {
+      panes.forEach((c) => c.timeScale().fitContent());
+      fitted = true;
+    }
+  };
+  const ro = new ResizeObserver(relayout);
+  ro.observe(priceWrap);
+  ro.observe(rsiWrap);
+  ro.observe(macdWrap);
+  relayout();
+
+  lwCharts.push(
+    { chart: priceChart, el: priceWrap, ro },
+    { chart: rsiChart, el: rsiWrap },
+    { chart: macdChart, el: macdWrap },
+  );
+
+  // ── indicator controller ──
+  const state = {
+    ma_50: true, ma_200: true,
+    ema_9: ema9Pts.length > 0, ema_20: ema20Pts.length > 0,
+    bb: bbUpperPts.length > 0,
+    vol: volPts.length > 0,
+    rsi: rsiPts.length > 0,
+    macd: macdLinePts.length > 0,
+  };
+  rsiWrap.classList.toggle("collapsed", !state.rsi);
+  macdWrap.classList.toggle("collapsed", !state.macd);
+
+  // Show/hide a sub-pane via the CSS height transition, then let the
+  // ResizeObserver re-fit it on the next frame once it has real height.
+  const toggleSubPane = (wrap, on) => {
+    wrap.classList.toggle("collapsed", !on);
+    if (on) requestAnimationFrame(relayout);
+  };
+
+  function setIndicator(key, on) {
+    if (key === "ma_50") ma50.applyOptions({ visible: on });
+    else if (key === "ma_200") ma200.applyOptions({ visible: on });
+    else if (key === "ema_9") ema9.applyOptions({ visible: on });
+    else if (key === "ema_20") ema20.applyOptions({ visible: on });
+    else if (key === "bb") {
+      bbUpper.applyOptions({ visible: on });
+      bbMiddle.applyOptions({ visible: on });
+      bbLower.applyOptions({ visible: on });
+    }
+    else if (key === "vol") volume.applyOptions({ visible: on });
+    else if (key === "rsi") toggleSubPane(rsiWrap, on);
+    else if (key === "macd") toggleSubPane(macdWrap, on);
+    else {
+      console.warn(`[chart] unknown indicator key: ${key}`);
+      return;
+    }
+    state[key] = on;
+  }
+
+  // Live polling: mutate the LAST candle in place. Same `time` as the current
+  // last bar → lightweight-charts replaces it rather than appending, so there
+  // is no flicker and no phantom bar. High/low widen to include the new print.
+  let lastBar = candlePts.length ? { ...candlePts[candlePts.length - 1] } : null;
+  function updateLastPrice(price) {
+    if (!lastBar || !Number.isFinite(price)) return;
+    lastBar = {
+      time: lastBar.time,
+      open: lastBar.open,
+      high: Math.max(lastBar.high, price),
+      low: Math.min(lastBar.low, price),
+      close: price,
+    };
+    try { candle.update(lastBar); } catch (err) { console.warn("[poll] candle.update:", err); }
+  }
+
+  // Tear down just this chart group (used when a timeframe switch rebuilds it).
+  function destroy() {
+    try { ro.disconnect(); } catch (_) { /* gone */ }
+    [priceChart, rsiChart, macdChart].forEach((ch) => {
+      const i = lwCharts.findIndex((e) => e.chart === ch);
+      if (i >= 0) lwCharts.splice(i, 1);
+      try { ch.remove(); } catch (_) { /* already removed */ }
+    });
+  }
+
+  return { state, setIndicator, updateLastPrice, destroy };
 }
 
 function appendHeadlines(container, news) {
@@ -498,8 +1555,76 @@ function rawDetails(summary, text) {
   return d;
 }
 
-$("#run").addEventListener("click", analyze);
-$("#tickers").addEventListener("keydown", (e) => { if (e.key === "Enter") analyze(); });
+// ── live polling ───────────────────────────────────────────────────────────
+// Every 10s: hit the cheap /api/quote for whatever tickers are on screen,
+// update the header market dot, and nudge each chart's last candle. When the
+// market is closed we still refresh the dot but leave the candles alone.
+const POLL_INTERVAL_MS = 10000;
+let pollTimer = null;
+let polling = false;
+
+function setMarketDot(open) {
+  const dot = $("#market-dot"), label = $("#market-label");
+  if (dot) {
+    dot.classList.toggle("open", !!open);
+    dot.classList.toggle("closed", !open);
+    dot.title = open ? "Market open" : "Market closed";
+  }
+  if (label) label.textContent = open ? "LIVE" : "CLOSED";
+}
+
+async function pollQuotes() {
+  if (polling) return;                          // last tick still in flight
+  const syms = appState.tickers;
+  if (!syms.length) return;
+
+  polling = true;
+  try {
+    const res = await fetch("api/quote?tickers=" + encodeURIComponent(syms.join(",")));
+    const data = await res.json();
+    setMarketDot(data.market_open);
+    (data.quotes || []).forEach((q) => { appState.quotes[q.ticker] = q; });
+
+    renderWatchlist();
+    updateWsPrice();
+
+    if (data.market_open && appState.chart && appState.chart.updateLastPrice) {
+      const q = appState.quotes[appState.active];
+      if (q && q.price != null) appState.chart.updateLastPrice(q.price);
+    }
+  } catch (err) {
+    console.warn("[poll] quote fetch failed:", err);
+  } finally {
+    polling = false;
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  pollQuotes();                                  // immediate first tick
+  pollTimer = setInterval(pollQuotes, POLL_INTERVAL_MS);
+}
+
+// ── wire up ──
+$("#run").addEventListener("click", runFullAnalysis);
+$("#ticker-search").addEventListener("input", renderWatchlist);
+$("#ticker-search").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const sym = e.target.value.trim().toUpperCase();
+  if (sym && /^[A-Z][A-Z.\-]{0,9}$/.test(sym) && !appState.tickers.includes(sym)) {
+    appState.tickers.unshift(sym);
+    e.target.value = "";
+    selectTicker(sym);
+  } else if (sym && appState.tickers.includes(sym)) {
+    e.target.value = "";
+    selectTicker(sym);
+  }
+});
+
+renderWatchlist();
+renderAgent3();
+renderWorkspace();
+startPolling();
 </script>
 </body>
 </html>

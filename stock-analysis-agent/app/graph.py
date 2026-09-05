@@ -74,8 +74,9 @@ logger = logging.getLogger(__name__)
 # code change. Default is the small, cheap Flash-Lite tier; override with
 # DECISION_MODEL to whatever string Google AI Studio currently lists.
 _DECISION_MODEL = os.getenv("DECISION_MODEL", "gemini-3.5-flash-lite")
-# Per-ticker three-section reports are large — give the model real room.
-_DECISION_MAX_TOKENS = int(os.getenv("DECISION_MAX_TOKENS", "10000"))
+# Per-ticker three-section reports are large and the default basket is ~11
+# tickers — give the model real room so the JSON isn't truncated mid-array.
+_DECISION_MAX_TOKENS = int(os.getenv("DECISION_MAX_TOKENS", "20000"))
 # Extra revise-passes of the internal critic loop (0 = single self-critique
 # call only, which is what the system prompt already enforces; 1–2 = that many
 # additional "audit your draft" round-trips at ~1x cost each).
@@ -101,7 +102,45 @@ _SYSTEM_PROMPT = (
     "14-day RSI supplied for each ticker: explicitly call out an overbought reading "
     "(RSI > 70) or an oversold reading (RSI < 30) in the executive thesis, tying it "
     "to entry timing / momentum risk rather than treating it as a standalone "
-    "verdict.\n"
+    "verdict. Also weigh the 9-day and 20-day EMAs: evaluate the EMA-9 vs EMA-20 "
+    "relationship (EMA-9 above and pulling away from EMA-20 = accelerating "
+    "short-term momentum; EMA-9 below EMA-20 = fading momentum / bearish "
+    "near-term) and both EMAs' position relative to the latest close and the "
+    "50-day MA — close above a rising EMA-20 with EMA-20 above the 50-day MA "
+    "signals trend strength; the inverse signals weakening momentum or a "
+    "possible trend break. State this read explicitly and connect it to the "
+    "thesis, not as a standalone verdict. Also read the MACD (12/26/9) snapshot: "
+    "identify a bullish crossover (MACD line above the signal line, histogram "
+    "positive/rising) or a bearish crossover (MACD line below the signal line, "
+    "histogram negative/falling), and gauge momentum expansion vs contraction "
+    "from the histogram magnitude and direction. Cross-check MACD against the "
+    "14-day RSI and the 20-day EMA trend: call out when they CONFIRM each other "
+    "(e.g. bullish MACD crossover + RSI rising through 50 + price above a rising "
+    "EMA-20) versus when they DIVERGE (e.g. price/EMA-20 making new highs while "
+    "MACD histogram shrinks or RSI rolls over), and weight a confirmed signal "
+    "more than a lone one. Also read the Bollinger Bands (SMA-20 ± 2σ): use "
+    "bandwidth as a volatility gauge — a low/contracting bandwidth is a squeeze "
+    "that often precedes a large directional move, a high/expanding one means "
+    "volatility is already elevated. Note where the latest close sits in the "
+    "channel: pressing or closing above the UPPER band = strong momentum but "
+    "stretched/overbought, pressing or closing below the LOWER band = "
+    "oversold/possible rejection, and a close back inside after a band break "
+    "often signals exhaustion. Do NOT treat a band touch as a signal on its "
+    "own — confirm it against RSI (is it also >70 / <30 or diverging?) and MACD "
+    "(is the histogram confirming or fading?) to filter false breakouts, and "
+    "say so explicitly.\n"
+    "1b. High-beta price action: for volatile, high-beta names (e.g. TSLA, SMCI) "
+    "the tape is driven as much by structure as by fundamentals. When you judge "
+    "a Bollinger Band breakout or an RSI divergence, actively look for aggressive "
+    "price-action mechanics and name them where the data supports it: Fair Value "
+    "Gaps / imbalances (a wide unfilled gap between one bar's range and the next "
+    "that price tends to revisit), liquidity sweeps / stop runs (a sharp spike "
+    "through an obvious prior high or low that immediately reverses), and shifts "
+    "in market structure (a decisive break of the last swing high/low that flips "
+    "the trend). Treat a band break that coincides with a liquidity sweep and no "
+    "structure shift as a probable fake-out; treat one that holds with a "
+    "structure break and MACD/RSI confirmation as a real regime change. Be "
+    "explicit that this reading is probabilistic, not a call.\n"
     "2. Catalyst timeline: for each meaningful price move or shift, attribute it to "
     "a specific DATED news catalyst FROM THE PROVIDED HEADLINES. Each entry needs a "
     "date, the catalyst + its source, the market reaction (% move / volume / trend "
@@ -109,7 +148,14 @@ _SYSTEM_PROMPT = (
     "guidance cut, supply bottleneck). If a ticker has no usable dated news, say so "
     "in its timeline — do NOT invent events or dates.\n"
     "3. Scenarios: bull / base / bear, each with concrete drivers and an explicit "
-    "fundamental invalidation trigger. Add a probability (0..1) per leg.\n"
+    "fundamental invalidation trigger. Add a probability (0..1) per leg. For "
+    "high-beta names the bull and bear triggers MUST explicitly account for "
+    "gap risk: a rapid 10–20% single-session gap-up or gap-down driven by an "
+    "unexpected catalyst — an earnings pre-announcement, a guidance revision, a "
+    "regulatory action, or an SEC 8-K filing (item 2.02 results, 4.02 "
+    "non-reliance / restatement, 5.02 executive change, 1.01/2.01 material "
+    "deal). State the specific catalyst type that would drive each gap and the "
+    "price level or structural break that would confirm it.\n"
     "Also produce basket-level cross_cutting_risks.\n"
     "\n"
     "INTERNAL REFLECTION (do this before you answer, then discard the scratch work):\n"
@@ -153,16 +199,45 @@ def _format_quant_block(rows: list[TickerSummary]) -> str:
     for r in rows:
         ma = r.moving_averages
         rsi = f"{r.rsi_14:.1f}" if r.rsi_14 is not None else "n/a"
+        # Indicator look-backs are in *bars*; on an intraday timeframe "50-bar
+        # MA" is not "50-day". Label the period so the model reads it right.
+        unit = "day" if r.timeframe in ("6M", "1Y", "ALL") else "bar"
         lines.append(
-            f"- {r.ticker}: latest close {_fmt_price(r.latest_close)} "
+            f"- {r.ticker} [{r.timeframe}]: latest close {_fmt_price(r.latest_close)} "
             f"({r.period_start} → {r.period_end}); "
-            f"6-month return {r.pct_return:+.2f}%; "
-            f"50-day MA {_fmt_price(ma.ma_50)}; "
-            f"200-day MA {_fmt_price(ma.ma_200)}; "
-            f"14-day RSI {rsi}; "
-            f"{r.data_points} trading days"
+            f"period return {r.pct_return:+.2f}%; "
+            f"50-{unit} MA {_fmt_price(ma.ma_50)}; "
+            f"200-{unit} MA {_fmt_price(ma.ma_200)}; "
+            f"9-{unit} EMA {_fmt_price(ma.ema_9)}; "
+            f"20-{unit} EMA {_fmt_price(ma.ema_20)}; "
+            f"14-{unit} RSI {rsi}; "
+            f"MACD {_fmt_macd(r.macd)}; "
+            f"Bollinger {_fmt_bollinger(r.bollinger)}; "
+            f"{r.data_points} bars"
         )
     return "\n".join(lines)
+
+
+def _fmt_bollinger(b) -> str:
+    """Compact 'upper / middle / lower, bandwidth' rendering of the BB snapshot."""
+    if b is None:
+        return "n/a"
+    bw = f"{b.bandwidth:.3f}" if b.bandwidth is not None else "n/a"
+    return (
+        f"upper {_fmt_price(b.bb_upper)} / middle {_fmt_price(b.bb_middle)} / "
+        f"lower {_fmt_price(b.bb_lower)}, bandwidth {bw}"
+    )
+
+
+def _fmt_macd(m) -> str:
+    """Compact 'line / signal / hist' rendering of the latest MACD snapshot."""
+    if m is None:
+        return "n/a"
+
+    def _n(v: float | None) -> str:
+        return f"{v:+.4f}" if v is not None else "n/a"
+
+    return f"line {_n(m.macd_line)} / signal {_n(m.signal_line)} / hist {_n(m.macd_histogram)}"
 
 
 def _format_news_block(bundles: list[TickerNews]) -> str:
@@ -232,11 +307,27 @@ def _generate(contents: str) -> str:
             response_schema=_LlmDecision,
         ),
     )
+    try:
+        finish = getattr(response.candidates[0], "finish_reason", None)
+        if finish and "MAX_TOKENS" in str(finish).upper():
+            logger.warning(
+                "decision_agent: Gemini stopped at max_output_tokens (%d) — reply "
+                "is truncated; salvage will recover the complete reports. Raise "
+                "DECISION_MAX_TOKENS or reduce the ticker count.",
+                _DECISION_MAX_TOKENS,
+            )
+    except Exception:  # noqa: BLE001 — diagnostics only
+        pass
     return (response.text or "").strip()
 
 
 def _parse_report(raw: str) -> Optional[_LlmDecision]:
-    """Validate the model JSON against ``_LlmDecision``; tolerate stray wrapping."""
+    """
+    Validate the model JSON against ``_LlmDecision``. If strict validation
+    fails (usually a truncated reply, or one report with a schema drift the
+    field validators couldn't absorb), fall back to salvaging every individual
+    report object that *does* validate — a partial report beats none.
+    """
     if not raw:
         return None
     for candidate in (raw, _first_json_object(raw)):
@@ -244,14 +335,68 @@ def _parse_report(raw: str) -> Optional[_LlmDecision]:
             continue
         try:
             return _LlmDecision.model_validate_json(candidate)
-        except Exception:  # noqa: BLE001 — try the next candidate / give up
+        except Exception:  # noqa: BLE001 — try the next candidate / salvage
             continue
+
+    salvaged = _salvage_reports(raw)
+    if salvaged:
+        logger.warning(
+            "decision_agent: strict parse failed — salvaged %d report(s) from "
+            "the reply", len(salvaged)
+        )
+        return _LlmDecision(reports=salvaged)
     return None
 
 
 def _first_json_object(text: str) -> str:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     return match.group(0) if match else ""
+
+
+def _salvage_reports(raw: str) -> list[TickerReport]:
+    """
+    Best-effort recovery of individual ``TickerReport`` objects from a reply
+    whose top-level JSON won't parse. Scans the ``"reports"`` array with a tiny
+    brace/string state machine, validating each complete ``{ … }`` element on
+    its own; a trailing half-written object (truncation) is simply skipped.
+    """
+    anchor = raw.find('"reports"')
+    if anchor == -1:
+        return []
+    lb = raw.find("[", anchor)
+    if lb == -1:
+        return []
+
+    out: list[TickerReport] = []
+    depth, obj_start = 0, -1
+    in_str = esc = False
+    for i in range(lb + 1, len(raw)):
+        ch = raw[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and obj_start != -1:
+                try:
+                    out.append(TickerReport.model_validate_json(raw[obj_start:i + 1]))
+                except Exception:  # noqa: BLE001 — drop the bad one, keep going
+                    pass
+                obj_start = -1
+        elif ch == "]" and depth == 0:
+            break
+    return out
 
 
 # ── Agent 3 — public entry point (LangGraph node function) ──────────────────
@@ -319,17 +464,41 @@ def decision_agent(state: StockAnalysisState) -> StockAnalysisState:
     if parsed is None or not parsed.reports:
         return _fallback("model reply could not be parsed into a report")
 
+    # A partial parse (salvage, or the model just skipped a ticker) still gives
+    # a full report set: fill the gaps with Hold placeholders rather than
+    # discarding the reports that DID come back.
+    by_ticker = {r.ticker: r for r in parsed.reports}
+    reports = [
+        by_ticker.get(t) or TickerReport(
+            ticker=t,
+            recommendation="Hold",
+            executive_thesis=(
+                "Automated analysis unavailable for this ticker — the model "
+                "reply was truncated or omitted it. Other tickers are unaffected."
+            ),
+        )
+        for t in state.tickers
+    ]
+    missing = [t for t in state.tickers if t not in by_ticker]
+    partial_note = (
+        f"partial report: {len(missing)}/{len(state.tickers)} tickers "
+        f"({', '.join(missing)}) missing from the model reply — filled with Hold"
+        if missing else None
+    )
+
     report = DecisionReport(
-        reports=parsed.reports,
+        reports=reports,
         cross_cutting_risks=parsed.cross_cutting_risks,
         critic_notes=(parsed.critic_notes or None),
         model=_DECISION_MODEL,
         generated_at=generated_at,
         raw_response=raw,
+        error=partial_note,
     )
     logger.info(
-        "decision_agent: %d report(s) — %s",
+        "decision_agent: %d report(s)%s — %s",
         len(report.reports),
+        f" ({len(missing)} filled)" if missing else "",
         ", ".join(f"{r.ticker}:{r.recommendation}" for r in report.reports),
     )
     return state.model_copy(update={"final_decision": report})
@@ -360,6 +529,7 @@ class GraphState(TypedDict, total=False):
     """Per-field channel schema for the workflow (mirrors ``StockAnalysisState``)."""
 
     tickers: list[str]
+    timeframe: str
     historical_data: Annotated[list[dict], _take_right]         # Agent 1
     failed_tickers: Annotated[list[dict], _take_right]          # Agent 1
     fundamental_report: Annotated[Optional[str], _take_right]   # Agent 2
@@ -436,7 +606,9 @@ def build_graph():
 graph = build_graph()
 
 
-def run_analysis(tickers: list[str] | None = None) -> StockAnalysisState:
+def run_analysis(
+    tickers: list[str] | None = None, timeframe: str | None = None
+) -> StockAnalysisState:
     """
     Execute the full pipeline end to end and return the final typed state.
 
@@ -448,6 +620,8 @@ def run_analysis(tickers: list[str] | None = None) -> StockAnalysisState:
     tickers : list[str] | None
         Symbols to analyse. ``None`` falls back to ``StockAnalysisState``'s
         default basket.
+    timeframe : str | None
+        Chart timeframe for Agent 1 (1D…ALL). ``None`` → the state default.
 
     Returns
     -------
@@ -456,10 +630,17 @@ def run_analysis(tickers: list[str] | None = None) -> StockAnalysisState:
         ``fundamental_highlights``, ``news_context`` and ``final_decision``
         populated.
     """
-    initial = (
-        StockAnalysisState(tickers=tickers) if tickers else StockAnalysisState()
+    kwargs: dict[str, Any] = {}
+    if tickers:
+        kwargs["tickers"] = tickers
+    if timeframe:
+        kwargs["timeframe"] = timeframe
+    initial = StockAnalysisState(**kwargs)
+    logger.info(
+        "run_analysis: invoking graph for %s [%s]", initial.tickers, initial.timeframe
     )
-    logger.info("run_analysis: invoking graph for %s", initial.tickers)
-    # Seed only ``tickers``; every other field is produced by a node.
-    result = graph.invoke({"tickers": initial.tickers})
+    # Seed ``tickers`` + ``timeframe``; every other field is produced by a node.
+    result = graph.invoke(
+        {"tickers": initial.tickers, "timeframe": initial.timeframe}
+    )
     return StockAnalysisState(**result)

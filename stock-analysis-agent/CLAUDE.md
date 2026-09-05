@@ -72,21 +72,15 @@ PYTHONPATH=. python -c "from app.graph import graph; from app.state import Stock
 print(graph.invoke(StockAnalysisState(tickers=['AAPL']).model_dump()))"
 ```
 
-Endpoints: `GET /` (dashboard UI), `GET /health`, `POST /analyze` (full graph),
-`POST /analyze/quantitative`, `POST /analyze/fundamental`, `POST /analyze/news`. Request
-body: `{"tickers": ["AAPL", "NVDA", "MSFT"]}` (optional; that list is the default). Non-US
+The analysis routes take a request body of `{"tickers": [...]}` (optional; the
+default basket is `DEFAULT_TICKERS` in `app/state.py` — a deliberately high-beta
+set: AAPL, NVDA, MSFT, TSLA, SMCI, AMD, MRNA, WOLF, ASTS, MARA, CVNA, so the
+gap-handling paths stay exercised — a full default run is therefore long). Non-US
 symbols work in Agent 1 via their yfinance suffix (e.g. `005930.KS` for Samsung), but
 Agent 2 is SEC-only and returns a `notes` explaining the miss for anything not on EDGAR.
 A full run is ~40–90s (EDGAR is the slow leg; Gemini is one call).
 
-**Dashboard.** `GET /` serves `app/static/index.html` verbatim (via `FileResponse`) — a
-single, dependency-free page (inline CSS/JS; Chart.js from a CDN). It POSTs to `/analyze`
-and renders, per ticker: a Buy/Sell/Hold badge, the executive thesis (paragraphs), a
-dated catalyst timeline, a bull/base/bear scenario table, and downside risks — followed
-by the cross-cutting risks, a 6-month returns bar chart, the metrics table, per-ticker
-price line charts (close + MA-50 + MA-200 from `price_history`) with recent headlines
-from `news_context`, and collapsible critic notes / fundamental report / raw JSON.
-No build step; edit the HTML and reload.
+Dashboard guidance lives in `app/static/CLAUDE.md` (loads when working under that dir).
 
 ## Architecture
 
@@ -126,9 +120,11 @@ are therefore declared `def`, not `async def`, so FastAPI runs them in a worker 
 instead of stalling the event loop. Keep new analysis routes sync.
 
 **Agent 1 detail.** Fetches a 6-month analysis window *plus* ~300 extra calendar days of
-look-back. Moving averages (50/200-day) are computed on the full series; return, period
-dates, `data_points`, and the emitted `price_history` (per-day close + MA-50 + MA-200,
-which powers the dashboard's price chart) all come from the trailing 6-month slice only.
+look-back. Moving averages (50/200-day) and the 14-day Wilder RSI are computed on the full
+series; return, period dates, `data_points`, and the emitted `price_history` (per-day
+OHLC + MA-50 + MA-200 + RSI-14, which powers the dashboard's candlestick and RSI charts)
+all come from the trailing 6-month slice only. `_rsi_series()` returns the whole RSI
+series; `_compute_rsi()` is the thin scalar wrapper for `TickerSummary.rsi_14`.
 
 **Agent 2 detail.** `extract_financial_highlights(text)` regex-scrapes revenue, net income,
 and forward-guidance prose from stripped filing HTML (best-effort, scaled by an
