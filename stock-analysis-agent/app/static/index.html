@@ -27,9 +27,9 @@
     --c-fg:        #e7ecf5;   /* primary text          */
     --c-fg-dim:    #a7b2c6;   /* secondary text        */
     --c-fg-muted:  #64708a;   /* tertiary / captions   */
-    --c-primary:   #4f8cff;
-    --c-primary-hi: #74a4ff;
-    --c-primary-lo: #2f6ae0;
+    --c-primary:   #7c6cf6;   /* indigo — the app's own accent (distinct from chart blue) */
+    --c-primary-hi: #9c8bff;
+    --c-primary-lo: #5b4bd6;
     --c-pos:       #35c37a;   /* up / buy              */
     --c-neg:       #f0533f;   /* down / sell           */
     --c-warn:      #e0a13a;   /* hold / caution        */
@@ -51,9 +51,10 @@
     --ink: #e7ecf5;
     --ink-dim: var(--c-fg-dim);
     --muted: #64708a;
-    --accent: #4f8cff;
-    --accent-hi: var(--c-primary-hi);
-    --accent-soft: rgba(79, 140, 255, .13);
+    --accent: #7c6cf6;
+    --accent-hi: #9c8bff;
+    --accent-soft: rgba(124, 108, 246, .15);
+    --accent-glow: rgba(124, 108, 246, .35);
     --buy: #35c37a;
     --sell: #f0533f;
     --hold: var(--c-warn);
@@ -73,7 +74,7 @@
     --sh-lg: 0 20px 48px -12px rgba(0, 0, 0, .65);
     --t: 150ms cubic-bezier(.4, 0, .2, 1);
     --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-    --header-h: 54px;
+    --header-h: 60px;
 
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
@@ -85,7 +86,7 @@
   html, body { height: 100%; }
   body {
     margin: 0;
-    font: 400 13.5px/1.5 var(--font-sans);
+    font: 400 14px/1.55 var(--font-sans);
     background: var(--bg);
     color: var(--ink);
     overflow: hidden;
@@ -121,28 +122,42 @@
   header {
     height: var(--header-h);
     display: flex; align-items: center;
-    padding: 0 clamp(14px, 3vw, 26px);
+    padding: 0 clamp(16px, 3vw, 28px);
     border-bottom: 1px solid var(--border);
     background: linear-gradient(180deg, var(--c-surface-2), var(--panel));
+    position: relative;
   }
-  .head-row { display: flex; align-items: center; gap: 14px; width: 100%; }
+  header::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+    opacity: .55;
+  }
+  .head-row { display: flex; align-items: center; gap: 18px; width: 100%; }
   header h1 {
-    margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .14em;
-    display: flex; align-items: center; gap: 9px; color: var(--ink);
+    margin: 0; font-size: 14.5px; font-weight: 800; letter-spacing: .1em;
+    display: flex; align-items: center; gap: 10px; color: var(--ink);
   }
   header h1::before {
-    content: ""; width: 9px; height: 9px; border-radius: 3px;
-    background: linear-gradient(135deg, var(--accent), var(--c-ema));
-    box-shadow: 0 0 12px var(--accent-soft);
+    content: ""; width: 20px; height: 20px; border-radius: var(--r-xs);
+    background: linear-gradient(135deg, var(--accent), var(--c-ema) 130%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .08) inset, 0 4px 14px -2px var(--accent-glow);
   }
+  .head-tagline {
+    color: var(--muted); font-size: 11.5px; font-weight: 500;
+    padding-left: 18px; border-left: 1px solid var(--border);
+    display: none;
+  }
+  @media (min-width: 760px) { .head-tagline { display: inline; } }
   .head-status { color: var(--muted); font-size: 12px; margin-left: auto; }
   .head-status.error { color: var(--sell); }
 
   .market-status {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 10.5px; font-weight: 600; letter-spacing: .12em; color: var(--muted);
-    padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--r-full);
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .12em; color: var(--ink-dim);
+    padding: 6px 12px 6px 10px; border: 1px solid var(--border); border-radius: var(--r-full);
     background: var(--panel-2);
+    box-shadow: var(--sh-sm);
+    margin-left: auto;
   }
   #market-label { font-weight: 700; }
   .market-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
@@ -162,7 +177,11 @@
   }
   .panel { overflow-y: auto; padding: var(--s-4); }
   .panel-left  { background: var(--panel); border-right: 1px solid var(--border); }
-  .panel-center { background: var(--bg); }
+  .panel-center {
+    background:
+      radial-gradient(900px 420px at 18% -8%, var(--accent-soft), transparent 60%),
+      var(--bg);
+  }
   .panel-right { background: var(--panel); border-left: 1px solid var(--border); }
   .panel-title {
     margin: 0 0 var(--s-3); font-size: 10px; font-weight: 700; letter-spacing: .13em;
@@ -181,39 +200,47 @@
   .wl-search::placeholder { color: var(--muted); letter-spacing: 0; }
   .wl-search:hover { border-color: var(--border-strong); }
 
-  .watchlist { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .watchlist { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
   .wl-row {
     position: relative;
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 9px 10px 9px 12px; border-radius: var(--r-sm); cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 12px 11px 16px; border-radius: var(--r-sm); cursor: pointer;
     border: 1px solid transparent;
-    transition: background var(--t), border-color var(--t);
+    transition: background var(--t), border-color var(--t), transform var(--t);
   }
   .wl-row::before {
     content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 0; border-radius: var(--r-full); background: var(--accent);
+    width: 3px; height: 0; border-radius: var(--r-full);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
     transition: height var(--t);
   }
-  .wl-row:hover { background: var(--panel-2); }
-  .wl-row.active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-  .wl-row.active::before { height: 18px; }
-  .wl-sym { font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
+  .wl-row:hover { background: var(--panel-2); transform: translateX(1px); }
+  .wl-row.active {
+    background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    box-shadow: var(--sh-sm);
+  }
+  .wl-row.active::before { height: 22px; }
+  .wl-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .wl-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
+  .wl-dot.pos { background: var(--buy); box-shadow: 0 0 6px var(--pos-soft); }
+  .wl-dot.neg { background: var(--sell); box-shadow: 0 0 6px var(--neg-soft); }
+  .wl-sym { font-weight: 700; font-size: 13px; letter-spacing: .02em; }
   .wl-chg {
-    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--r-xs);
-    min-width: 62px; text-align: right;
+    font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: var(--r-xs);
+    min-width: 64px; text-align: right;
   }
   .wl-chg.pos { background: var(--pos-soft); color: var(--buy); }
   .wl-chg.neg { background: var(--neg-soft); color: var(--sell); }
   .wl-chg.flat { background: var(--panel-3); color: var(--muted); }
 
   .run-btn {
-    width: 100%; margin-top: var(--s-4); padding: 11px 14px;
+    width: 100%; margin-top: var(--s-4); padding: 12px 14px;
     font: 700 12.5px/1 var(--font-sans); letter-spacing: .04em;
     border: 0; border-radius: var(--r-sm); cursor: pointer;
     color: #fff;
     background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .12) inset, var(--sh-sm);
-    transition: filter var(--t), transform var(--t);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .16) inset, 0 8px 20px -6px var(--accent-glow), var(--sh-sm);
+    transition: filter var(--t), transform var(--t), box-shadow var(--t);
   }
   .run-btn:hover:not(:disabled) { filter: brightness(1.08); }
   .run-btn:active:not(:disabled) { transform: translateY(1px); }
@@ -221,17 +248,30 @@
   .hint { color: var(--muted); font-size: 11px; line-height: 1.5; margin: var(--s-2) 2px 0; }
 
   /* ═══ CENTER · WORKSPACE ═══ */
-  .ws-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: var(--s-3); }
-  .ws-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .ws-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: var(--s-4); }
+  .ws-head h2 {
+    margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em;
+    background: linear-gradient(180deg, var(--ink), var(--ink-dim));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
   .ws-head .px {
-    font-size: 13px; color: var(--muted); font-family: var(--font-mono);
+    font-size: 14px; color: var(--muted); font-family: var(--font-mono);
     display: inline-flex; align-items: baseline; gap: 8px;
   }
   .ws-head .px .pos, .ws-head .px .neg {
-    font-weight: 600; padding: 2px 7px; border-radius: var(--r-xs);
+    font-weight: 700; padding: 3px 9px; border-radius: var(--r-xs); font-size: 13px;
   }
   .ws-head .px .pos { color: var(--buy); background: var(--pos-soft); }
   .ws-head .px .neg { color: var(--sell); background: var(--neg-soft); }
+
+  /* Empty-state placeholder (right panel before a full run, chart before data) */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: var(--s-3); padding: var(--s-6) var(--s-3); color: var(--muted);
+  }
+  .empty-state svg { opacity: .5; }
+  .empty-state strong { color: var(--ink-dim); font-size: 13px; font-weight: 600; }
+  .empty-state span { font-size: 12px; line-height: 1.6; max-width: 220px; }
 
   #status { margin: var(--s-2) 2px; color: var(--muted); font-size: 12.5px; }
   #status.error { color: var(--sell); }
@@ -288,6 +328,7 @@
     height: 340px;
     border: 1px solid var(--border); border-radius: var(--r);
     background: var(--panel); overflow: hidden;
+    box-shadow: var(--sh);
   }
   .lw-wrap.sub {
     height: 148px; margin-top: 6px; overflow: hidden;
@@ -441,6 +482,7 @@
 <header>
   <div class="head-row">
     <h1>STOCK TERMINAL</h1>
+    <span class="head-tagline">Multi-agent equity research</span>
     <span class="market-status">
       <span id="market-dot" class="market-dot closed" title="Market status unknown"></span>
       <span id="market-label" class="num">—</span>
@@ -471,7 +513,16 @@
 
   <aside class="panel panel-right">
     <p class="panel-title">Agent 3 · Intelligence</p>
-    <div id="agent3"><p class="hint">Run a full analysis to populate the thesis, catalyst timeline and scenario matrix.</p></div>
+    <div id="agent3">
+      <div class="empty-state">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+        </svg>
+        <strong>No report yet</strong>
+        <span>Run a full analysis to populate the executive thesis, catalyst timeline and scenario matrix.</span>
+      </div>
+    </div>
   </aside>
 </div>
 
@@ -491,6 +542,15 @@ const fmtRSI = (v) => {
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
+
+// Shared "nothing here yet" placeholder (right panel pre-analysis, missing report, …).
+const emptyStateHTML = (title, sub) => `<div class="empty-state">
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+  </svg>
+  <strong>${esc(title)}</strong><span>${esc(sub)}</span>
+</div>`;
 
 // A price_history `date` is a bare "YYYY-MM-DD" for daily timeframes (pass
 // straight to lightweight-charts as a business day) or a full ISO-8601 string
@@ -552,8 +612,10 @@ function renderWatchlist() {
       const q = appState.quotes[sym];
       const chg = q && q.change_pct != null ? q.change_pct : null;
       const cls = chg == null ? "flat" : chg >= 0 ? "pos" : "neg";
+      const dotCls = chg == null ? "" : chg >= 0 ? "pos" : "neg";
       li.innerHTML =
-        `<span class="wl-sym num">${esc(sym)}</span>` +
+        `<span class="wl-main"><span class="wl-dot ${dotCls}"></span>` +
+        `<span class="wl-sym num">${esc(sym)}</span></span>` +
         `<span class="wl-chg num ${cls}">${chg == null ? "—" : fmtPct(chg)}</span>`;
       li.addEventListener("click", () => selectTicker(sym));
       ul.appendChild(li);
@@ -636,7 +698,10 @@ function renderAgent3() {
   const sym = appState.active;
 
   if (!d) {
-    host.innerHTML = `<p class="hint">Run a full analysis to populate the thesis, catalyst timeline and scenario matrix.</p>`;
+    host.innerHTML = emptyStateHTML(
+      "No report yet",
+      "Run a full analysis to populate the executive thesis, catalyst timeline and scenario matrix.",
+    );
     return;
   }
   if (d.error) {
@@ -644,7 +709,7 @@ function renderAgent3() {
   }
   const r = (d.reports || []).find((x) => x.ticker === sym);
   if (r) host.appendChild(agent3Report(r));
-  else host.insertAdjacentHTML("beforeend", `<p class="hint">No Agent 3 report for ${esc(sym)}.</p>`);
+  else host.insertAdjacentHTML("beforeend", emptyStateHTML("No report for " + sym, "It wasn't included in the last analysis run."));
 
   if ((d.cross_cutting_risks || []).length) {
     host.insertAdjacentHTML("beforeend",
