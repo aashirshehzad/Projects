@@ -153,4 +153,7 @@ adds explicit extra revise round-trips.
 
 - This directory is one project inside a larger multi-project git repo rooted at
   `D:\Projects`. `git log` / `git status` show sibling projects too; scope changes here.
-- `app/__pycache__/*.pyc` is currently tracked and there is no `.gitignore`.
+- `.gitignore` covers `.env*` and `__pycache__/`/`*.py[cod]`; `app/__pycache__/*.pyc`
+  used to be tracked despite that (pre-dating the `.gitignore`) and caused merge
+  conflicts on every branch switch since compiled bytecode differs per branch —
+  untracked now via `git rm --cached`.
