@@ -355,9 +355,25 @@
   .lw-legend .k-macdsig { color: var(--sell); }
   .lw-legend .k-macdhist { color: var(--muted); }
 
+  /* ═══ CHART CONTROLS TOOLBAR — timeframe + indicators, always above the
+     fold and above the chart, so neither gets missed by scrolling past it. ═══ */
+  .ws-controls {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: var(--s-3) var(--s-4);
+    margin-bottom: var(--s-4);
+    border: 1px solid var(--border); border-radius: var(--r);
+    background: var(--panel); box-shadow: var(--sh-sm);
+  }
+  .ws-controls-row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+  .ws-controls-label {
+    flex: 0 0 auto; width: 70px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted);
+  }
+
   /* ═══ TIMEFRAME · SEGMENTED CONTROL ═══ */
   .timeframe-bar {
-    display: inline-flex; gap: 2px; margin: 0 0 var(--s-3);
+    display: inline-flex; gap: 2px;
     padding: 3px; border: 1px solid var(--border); border-radius: var(--r-sm);
     background: var(--panel-2);
   }
@@ -370,7 +386,7 @@
   .tf-pill.active { background: var(--accent); color: #fff; }
 
   /* ═══ INDICATOR PILLS ═══ */
-  .indicator-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: var(--s-4) 0 var(--s-2); }
+  .indicator-bar { display: flex; gap: 6px; flex-wrap: wrap; }
   .pill {
     padding: 5px 12px; font: 600 11.5px/1 var(--font-sans); letter-spacing: .01em;
     border: 1px solid var(--border); border-radius: var(--r-full);
@@ -506,7 +522,16 @@
       <h2 id="ws-ticker">—</h2>
       <span id="ws-px" class="px num"></span>
     </div>
-    <div id="ws-timeframe"></div>
+    <div class="ws-controls">
+      <div class="ws-controls-row">
+        <span class="ws-controls-label">Timeframe</span>
+        <div id="ws-timeframe"></div>
+      </div>
+      <div class="ws-controls-row">
+        <span class="ws-controls-label">Indicators</span>
+        <div id="ws-indicator-bar"></div>
+      </div>
+    </div>
     <div id="ws-chart" class="chart-slot"></div>
     <div id="ws-indicators"></div>
   </section>
@@ -635,12 +660,14 @@ async function renderWorkspace() {
   const sym = appState.active;
   const slot = $("#ws-chart");
   const tfHost = $("#ws-timeframe");
+  const indBarHost = $("#ws-indicator-bar");
   const indHost = $("#ws-indicators");
   $("#ws-ticker").textContent = sym || "—";
 
   if (appState.chart && appState.chart.destroy) { appState.chart.destroy(); }
   appState.chart = null;
   tfHost.innerHTML = "";
+  indBarHost.innerHTML = "";
   indHost.innerHTML = "";
   tfHost.appendChild(timeframeBar());
 
@@ -664,9 +691,11 @@ async function renderWorkspace() {
   updateWsPrice();
 
   if (appState.chart) {
-    indHost.appendChild(indicatorPanel(appState.chart, {
+    const { bar, grid } = indicatorPanel(appState.chart, {
       ticker: sym, series: summary.price_history || [],
-    }));
+    });
+    indBarHost.appendChild(bar);
+    indHost.appendChild(grid);
   }
   const news = appState.news[sym];
   if (news && (news.items || []).length) appendHeadlines(indHost, news);
@@ -1128,10 +1157,11 @@ let insightCache = {};
 // Pill toggle bar + a responsive grid of runtime AI insight cards for one
 // ticker. ctx = { ticker, series }. Each indicator toggled ON injects its own
 // card (id `insight-card-<ticker>-<key>`); toggled OFF removes that card.
+// Returns { bar, grid } — the toggle-pill bar and the AI insight grid as two
+// separate elements, so the caller can place the (always-visible) controls
+// above the chart and the (secondary, result-of-a-click) insight cards
+// wherever makes sense, typically below it.
 function indicatorPanel(controller, ctx) {
-  const panel = document.createElement("div");
-  panel.className = "indicator-panel";
-
   const bar = document.createElement("div");
   bar.className = "indicator-bar";
   bar.setAttribute("role", "group");
@@ -1231,9 +1261,7 @@ function indicatorPanel(controller, ctx) {
     bar.appendChild(btn);
   });
 
-  panel.appendChild(bar);
-  panel.appendChild(grid);
-  return panel;
+  return { bar, grid };
 }
 
 // Candlestick price pane (close + MA-50 + MA-200 overlays) with a time-synced
@@ -1302,7 +1330,10 @@ function buildCandleCharts(container, series) {
   const bbColor = cssVar("--bb"), bbFill = cssVar("--bb-fill");
 
   const common = {
-    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 11 },
+    layout: {
+      background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 11,
+      attributionLogo: false,   // drop the small "TradingView" watermark — one per pane is visual noise
+    },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     // autoScale keeps the Y-axis fitted to whatever data is on the pane — each
     // ticker's chart is built independently, so a jump from a stable name to a
@@ -1312,6 +1343,14 @@ function buildCandleCharts(container, series) {
     rightPriceScale: { borderColor: grid, autoScale: true, scaleMargins: { top: 0.16, bottom: 0.14 } },
     timeScale: { borderColor: grid, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
+    // Mouse-wheel pan/zoom is OFF: this chart sits inside a page the user
+    // scrolls vertically, and lightweight-charts' default wheel handling
+    // hijacks that scroll the moment the cursor is over a pane (the user has
+    // to detour to the edge of the panel to keep scrolling). Drag-to-pan,
+    // axis-drag-to-zoom and pinch (touch) still work; only the plain wheel
+    // gesture — the one that collides with page scroll — is disabled.
+    handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+    handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
   };
 
   // Fixed sub-pane height (matches the .lw-wrap.sub CSS) so the RSI / MACD
