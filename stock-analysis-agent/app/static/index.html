@@ -75,6 +75,7 @@
     --t: 150ms cubic-bezier(.4, 0, .2, 1);
     --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
     --header-h: 60px;
+    --footer-h: 34px;
 
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
@@ -172,8 +173,8 @@
   /* ═══ 3-PANEL LAYOUT ═══ */
   .terminal {
     display: grid;
-    grid-template-columns: minmax(224px, 19%) minmax(0, 1fr) minmax(300px, 26%);
-    height: calc(100vh - var(--header-h));
+    grid-template-columns: 60px minmax(224px, 19%) minmax(0, 1fr) minmax(300px, 26%);
+    height: calc(100vh - var(--header-h) - var(--footer-h));
   }
   .panel { overflow-y: auto; padding: var(--s-4); }
   .panel-left  { background: var(--panel); border-right: 1px solid var(--border); }
@@ -323,6 +324,8 @@
   /* ═══ CHART PANES (lightweight-charts) ═══ */
   .chart-slot { position: relative; min-height: 60px; transition: opacity var(--t); }
   .chart-slot.is-loading { opacity: .4; pointer-events: none; }
+  .chart-slot:fullscreen { background: var(--bg); padding: var(--s-4); display: flex; align-items: center; }
+  .chart-slot:fullscreen .lw-wrap.price { height: 100%; flex: 1; }
   .lw-wrap { position: relative; width: 100%; }
   .lw-wrap.price {
     height: 340px;
@@ -330,12 +333,6 @@
     background: var(--panel); overflow: hidden;
     box-shadow: var(--sh);
   }
-  .lw-wrap.sub {
-    height: 148px; margin-top: 6px; overflow: hidden;
-    border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
-    transition: height .26s var(--t), margin-top .26s var(--t), opacity .2s var(--t), border-width .26s var(--t);
-  }
-  .lw-wrap.sub.collapsed { height: 0; margin-top: 0; opacity: 0; border-width: 0; pointer-events: none; }
   .lw-legend {
     position: absolute; top: 8px; left: 10px; z-index: 3;
     font-size: 10.5px; font-weight: 600; color: var(--muted); pointer-events: none;
@@ -350,10 +347,6 @@
   .lw-legend .k-ema20  { color: var(--ema); }
   .lw-legend .k-bb     { color: var(--bb); }
   .lw-legend .k-vol    { color: var(--muted); }
-  .lw-legend .k-rsi    { color: var(--accent); }
-  .lw-legend .k-macd   { color: var(--accent); }
-  .lw-legend .k-macdsig { color: var(--sell); }
-  .lw-legend .k-macdhist { color: var(--muted); }
 
   /* ═══ CHART CONTROLS TOOLBAR — timeframe + indicators, always above the
      fold and above the chart, so neither gets missed by scrolling past it. ═══ */
@@ -491,11 +484,201 @@
   .chart-wrap { position: relative; height: 300px; }
   .chart-wrap.short { height: 220px; }
 
+  /* ═══ APP RAIL — icon navigation, Dashboard is the only wired route ═══ */
+  .app-rail {
+    display: flex; flex-direction: column; align-items: stretch;
+    background: var(--c-surface-2); border-right: 1px solid var(--border);
+    padding: var(--s-3) 0; gap: 2px; overflow: hidden;
+    transition: width var(--t);
+    width: 60px;
+  }
+  .app-rail.expanded { width: 176px; }
+  .rail-btn {
+    display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+    border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    font: 600 11.5px/1 var(--font-sans); white-space: nowrap;
+    border-left: 2px solid transparent;
+  }
+  .rail-btn svg { flex: 0 0 auto; width: 18px; height: 18px; }
+  .rail-btn:hover { color: var(--ink); background: var(--panel-2); }
+  .rail-btn.active { color: var(--accent-hi); border-left-color: var(--accent); background: var(--accent-soft); }
+  .rail-btn .rail-label { opacity: 0; transition: opacity var(--t); }
+  .app-rail.expanded .rail-label { opacity: 1; }
+  .rail-spacer { flex: 1; }
+  .rail-collapse {
+    margin: var(--s-2) 10px 0; padding: 8px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .rail-collapse:hover { color: var(--ink); border-color: var(--border-strong); }
+
+  /* ═══ HEADER · SEARCH / BELL / THEME (mostly decorative chrome) ═══ */
+  .head-search {
+    display: none; align-items: center; gap: 8px;
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--r-full);
+    background: var(--panel-2); color: var(--muted); width: 220px; margin-left: 10px;
+  }
+  @media (min-width: 1080px) { .head-search { display: flex; } }
+  .head-search svg { flex: 0 0 auto; opacity: .7; }
+  .head-search input {
+    border: 0; background: transparent; color: var(--ink); font: 500 12px/1 var(--font-mono);
+    outline: none; width: 100%;
+  }
+  .head-search input::placeholder { color: var(--muted); }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--r-sm); border: 1px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer; margin-left: 6px;
+  }
+  .icon-btn:hover { color: var(--ink); background: var(--panel-2); border-color: var(--border); }
+  .icon-btn.disabled { cursor: not-allowed; opacity: .55; }
+
+  /* ═══ CENTER · TICKER HEADER (company identity + stats) ═══ */
+  .tk-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: var(--s-4); flex-wrap: wrap; }
+  .tk-avatar {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    font: 800 15px/1 var(--font-sans); color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--c-ema) 130%);
+    box-shadow: 0 4px 14px -2px var(--accent-glow);
+  }
+  .tk-id { min-width: 0; flex: 1 1 260px; }
+  .tk-id-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .tk-name { font-size: 13px; font-weight: 600; color: var(--ink-dim); }
+  .tk-tags { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .tk-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: var(--r-full); background: var(--panel-2);
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .tk-stats { display: flex; gap: var(--s-5); flex-wrap: wrap; margin-top: var(--s-2); }
+  .tk-stat { display: flex; flex-direction: column; gap: 2px; }
+  .tk-stat .lbl { font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .tk-stat .val { font-size: 13px; font-weight: 600; color: var(--ink); font-family: var(--font-mono); }
+  .tk-actions { display: flex; gap: 8px; margin-left: auto; flex: 0 0 auto; }
+  .tk-btn {
+    padding: 8px 14px; border-radius: var(--r-sm); font: 700 11.5px/1 var(--font-sans);
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--ink-dim);
+    cursor: pointer; white-space: nowrap; transition: filter var(--t), border-color var(--t);
+  }
+  .tk-btn:hover { border-color: var(--border-strong); color: var(--ink); }
+  .tk-btn.primary {
+    border: 0; color: #fff; background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .16) inset;
+  }
+  .tk-btn.primary:hover { filter: brightness(1.08); }
+  .tk-btn.primary:disabled { opacity: .55; cursor: progress; filter: none; }
+  .tk-btn.on { color: var(--buy); border-color: color-mix(in srgb, var(--buy) 35%, transparent); background: var(--pos-soft); }
+
+  /* ═══ CHART TOOLBAR ACTIONS (fullscreen / export / indicators dropdown) ═══ */
+  .ws-controls-row.spread { justify-content: space-between; }
+  .ws-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .ind-dropdown { position: relative; }
+  .ind-dropdown-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; font: 600 11.5px/1 var(--font-sans);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--panel-2); color: var(--ink-dim); cursor: pointer;
+  }
+  .ind-dropdown-btn:hover { border-color: var(--border-strong); color: var(--ink); }
+  .ind-dropdown-btn svg { transition: transform var(--t); }
+  .ind-dropdown.open .ind-dropdown-btn svg { transform: rotate(180deg); }
+  .ind-dropdown-panel {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+    min-width: 220px; padding: 10px; border-radius: var(--r); border: 1px solid var(--border);
+    background: var(--panel-3); box-shadow: var(--sh-lg);
+  }
+  .ind-dropdown.open .ind-dropdown-panel { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* ═══ TECHNICAL INDICATORS — 4 compact cards ═══ */
+  /* auto-fit rather than a viewport media query: the center panel's own
+     width — not the window's — decides how many cards fit per row, since
+     the panel is a fraction of the viewport inside the 3-column terminal grid. */
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s-3); margin-top: var(--s-4);
+  }
+  .tech-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r);
+    padding: var(--s-3) var(--s-3) var(--s-4); box-shadow: var(--sh-sm);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .tech-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tech-card-title { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .tech-card-value { font: 700 13px/1 var(--font-mono); color: var(--ink); }
+  .tech-mini { height: 64px; position: relative; }
+  .tech-stat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .tech-stat-row .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-right: 7px; }
+  .tech-stat-name { display: flex; align-items: center; color: var(--ink-dim); }
+  .tech-stat-val { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+  .ai-link {
+    align-self: flex-start; margin-top: 2px; border: 0; background: none; cursor: pointer;
+    color: var(--accent-hi); font: 700 10.5px/1 var(--font-sans); letter-spacing: .03em;
+    padding: 4px 0;
+  }
+  .ai-link:hover { color: var(--accent); text-decoration: underline; }
+  .tech-card .insight-inline {
+    font-size: 12px; line-height: 1.55; color: var(--ink-dim); padding-top: 6px;
+    border-top: 1px dashed var(--border); margin-top: 2px;
+  }
+
+  /* ═══ CENTER · NEWS + CATALYST ROW ═══ */
+  /* auto-fit on the panel's own width, same reasoning as .tech-grid above. */
+  .split-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-4); }
+
+  /* ═══ RIGHT PANEL · CONFIDENCE BADGE + TABS ═══ */
+  .a3-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--s-3); }
+  .conf-badge {
+    font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: var(--r-full); border: 1px solid transparent;
+  }
+  .conf-badge.High   { color: var(--buy);  background: var(--pos-soft);  border-color: color-mix(in srgb, var(--buy) 35%, transparent); }
+  .conf-badge.Medium { color: var(--hold); background: var(--warn-soft); border-color: color-mix(in srgb, var(--hold) 35%, transparent); }
+  .conf-badge.Low    { color: var(--sell); background: var(--neg-soft);  border-color: color-mix(in srgb, var(--sell) 35%, transparent); }
+
+  .a3-tabs { display: flex; gap: 4px; margin-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
+  .a3-tab {
+    padding: 8px 4px; margin-right: 14px; font: 700 10.5px/1 var(--font-sans);
+    letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+    border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer;
+  }
+  .a3-tab:hover { color: var(--ink-dim); }
+  .a3-tab.active { color: var(--accent-hi); border-bottom-color: var(--accent); }
+  .a3-tabpanel { display: none; }
+  .a3-tabpanel.active { display: block; }
+  .key-insights { list-style: none; margin: var(--s-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .key-insights li {
+    font-size: 12.5px; line-height: 1.55; color: var(--ink-dim); padding-left: 16px; position: relative;
+  }
+  .key-insights li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+
+  .risks.icon li { display: flex; gap: 8px; align-items: flex-start; padding-left: 0; }
+  .risks.icon li svg { flex: 0 0 auto; margin-top: 2px; color: var(--hold); }
+
+  /* ═══ LEFT · MARKET SNAPSHOT ═══ */
+  .snapshot { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--s-5); }
+  .snap-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 2px; }
+  .snap-name { font-size: 11.5px; font-weight: 600; color: var(--ink-dim); }
+  .snap-val { display: flex; align-items: baseline; gap: 8px; }
+  .snap-px { font: 600 12px/1 var(--font-mono); color: var(--ink); }
+  .snap-chg { font: 600 11px/1 var(--font-mono); }
+  .snap-chg.pos { color: var(--buy); }
+  .snap-chg.neg { color: var(--sell); }
+
+  /* ═══ FOOTER ═══ */
+  footer {
+    height: var(--footer-h); display: flex; align-items: center; justify-content: space-between;
+    padding: 0 clamp(16px, 3vw, 28px); border-top: 1px solid var(--border);
+    background: var(--panel); color: var(--muted); font-size: 10.5px;
+  }
+  footer .num { color: var(--muted); }
+
   /* ═══ RESPONSIVE — stack panels below 960px ═══ */
   @media (max-width: 960px) {
     body { overflow: auto; }
-    .terminal { grid-template-columns: 1fr; height: auto; }
+    .terminal { grid-template-columns: 1fr !important; height: auto; }
     .panel { max-height: none; }
+    .app-rail { display: none; }
     .panel-left { border-right: 0; border-bottom: 1px solid var(--border); }
     .panel-right { border-left: 0; border-top: 1px solid var(--border); }
   }
@@ -506,16 +689,72 @@
   <div class="head-row">
     <h1>STOCK TERMINAL</h1>
     <span class="head-tagline">Multi-agent equity research</span>
+    <label class="head-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="head-search-input" type="text" placeholder="Jump to ticker…" autocomplete="off" spellcheck="false" />
+    </label>
     <span class="market-status">
       <span id="market-dot" class="market-dot closed" title="Market status unknown"></span>
       <span id="market-label" class="num">—</span>
     </span>
+    <button class="icon-btn disabled" type="button" title="Notifications (coming soon)" aria-label="Notifications">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+    <button class="icon-btn disabled" type="button" title="Dark theme (only theme available)" aria-label="Theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
     <span id="status" class="head-status" hidden></span>
   </div>
 </header>
 
 <div class="terminal">
+  <nav class="app-rail" id="app-rail">
+    <button class="rail-btn active" type="button" data-route="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      <span class="rail-label">Dashboard</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="watchlist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20l-1.4-1.3C5.6 14.4 2 11.3 2 7.6 2 4.7 4.4 2.5 7.2 2.5c1.6 0 3.1.8 4.1 2 .8.9 1 1.9 1 1.9s.2-1 1-1.9c1-1.2 2.5-2 4.1-2 2.8 0 5.1 2.2 5.1 5.1 0 3.7-3.6 6.8-8.6 11.1L12 20z"/></svg>
+      <span class="rail-label">Watchlist</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="markets">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+      <span class="rail-label">Markets</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="news">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H4z"/><path d="M4 4v18l3-2 3 2 3-2 3 2V4"/></svg>
+      <span class="rail-label">News</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="screener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="rail-label">Screener</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+      <span class="rail-label">Reports</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="agents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+      <span class="rail-label">Agents</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="alerts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="rail-label">Alerts</span>
+    </button>
+    <button class="rail-btn" type="button" data-route="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="rail-label">Settings</span>
+    </button>
+    <div class="rail-spacer"></div>
+    <button class="rail-collapse" id="rail-collapse" type="button" title="Expand navigation" aria-label="Expand navigation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </nav>
+
   <aside class="panel panel-left">
+    <p class="panel-title">Market Snapshot</p>
+    <div id="market-snapshot" class="snapshot"></div>
+
     <p class="panel-title">Watchlist</p>
     <input id="ticker-search" class="wl-search num" type="text"
            placeholder="Search / add ticker (Enter)" autocomplete="off" spellcheck="false" />
@@ -525,22 +764,32 @@
   </aside>
 
   <section class="panel panel-center">
-    <div class="ws-head">
-      <h2 id="ws-ticker">—</h2>
-      <span id="ws-px" class="px num"></span>
-    </div>
+    <div id="ws-tk-header"></div>
     <div class="ws-controls">
-      <div class="ws-controls-row">
+      <div class="ws-controls-row spread">
         <span class="ws-controls-label">Timeframe</span>
         <div id="ws-timeframe"></div>
-      </div>
-      <div class="ws-controls-row">
-        <span class="ws-controls-label">Indicators</span>
-        <div id="ws-indicator-bar"></div>
+        <div class="ws-actions">
+          <div class="ind-dropdown" id="ind-dropdown">
+            <button type="button" class="ind-dropdown-btn" id="ind-dropdown-btn">
+              Indicators
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="ind-dropdown-panel" id="ws-indicator-bar"></div>
+          </div>
+          <button class="icon-btn" id="chart-fullscreen" type="button" title="Fullscreen chart" aria-label="Fullscreen chart">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
+          <button class="icon-btn" id="chart-export" type="button" title="Export chart as PNG" aria-label="Export chart as PNG">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+        </div>
       </div>
       <div id="ws-indicators"></div>
     </div>
     <div id="ws-chart" class="chart-slot"></div>
+    <div id="ws-tech-indicators"></div>
+    <div id="ws-news-catalyst"></div>
   </section>
 
   <aside class="panel panel-right">
@@ -557,6 +806,11 @@
     </div>
   </aside>
 </div>
+
+<footer>
+  <span>Stock Terminal <span class="num">v1.0</span> · Multi-agent equity research</span>
+  <span id="footer-updated" class="num">Last updated —</span>
+</footer>
 
 <script>
 const $ = (sel) => document.querySelector(sel);
@@ -669,13 +923,17 @@ async function renderWorkspace() {
   const tfHost = $("#ws-timeframe");
   const indBarHost = $("#ws-indicator-bar");
   const indHost = $("#ws-indicators");
-  $("#ws-ticker").textContent = sym || "—";
+  const techHost = $("#ws-tech-indicators");
+  const newsCatHost = $("#ws-news-catalyst");
+  renderTickerHeader();
 
   if (appState.chart && appState.chart.destroy) { appState.chart.destroy(); }
   appState.chart = null;
   tfHost.innerHTML = "";
   indBarHost.innerHTML = "";
   indHost.innerHTML = "";
+  techHost.innerHTML = "";
+  newsCatHost.innerHTML = "";
   tfHost.appendChild(timeframeBar());
 
   let summary = appState.summaries[sym];
@@ -685,6 +943,7 @@ async function renderWorkspace() {
     try {
       summary = await fetchQuant(sym, appState.timeframe);
       appState.summaries[sym] = summary;
+      renderTickerHeader();           // company metadata just arrived
     } catch (err) {
       slot.classList.remove("is-loading");
       slot.innerHTML = `<p class="hint">Couldn't load ${esc(sym)} — ${esc(err.message)}</p>`;
@@ -697,32 +956,149 @@ async function renderWorkspace() {
   appState.chart = slot._chartController || null;
   updateWsPrice();
 
+  const series = summary.price_history || [];
+  const insightCtl = createInsightController(indHost, { ticker: sym, series });
   if (appState.chart) {
-    const { bar, grid } = indicatorPanel(appState.chart, {
-      ticker: sym, series: summary.price_history || [],
-    });
-    indBarHost.appendChild(bar);
-    indHost.appendChild(grid);
+    indBarHost.appendChild(indicatorPanel(appState.chart, { ticker: sym, series }, insightCtl));
   }
-  const news = appState.news[sym];
-  if (news && (news.items || []).length) appendHeadlines(indHost, news);
+  techHost.appendChild(technicalIndicatorsSection({ ticker: sym, series }, insightCtl));
+  renderNewsCatalystRow(newsCatHost, sym);
 }
 
 function updateWsPrice() {
-  const el = $("#ws-px");
-  if (!el) return;
-  const sym = appState.active;
-  const q = appState.quotes[sym];
-  const s = appState.summaries[sym];
-  if (q && q.price != null) {
-    const cls = (q.change_pct ?? 0) >= 0 ? "pos" : "neg";
-    el.innerHTML = `${fmtUSD(q.price)} <span class="${cls}">${q.change_pct == null ? "" : fmtPct(q.change_pct)}</span>`;
-  } else if (s) {
-    const cls = s.pct_return >= 0 ? "pos" : "neg";
-    el.innerHTML = `${fmtUSD(s.latest_close)} <span class="${cls}">${fmtPct(s.pct_return)}</span> · ${esc(s.timeframe)}`;
+  renderTickerHeader();
+}
+
+// Abbreviate a large number: 4.67e12 -> "4.67T", 147.2e9 -> "147.2B".
+function fmtCompact(v) {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 1e12) return (v / 1e12).toFixed(2) + "T";
+  if (abs >= 1e9) return (v / 1e9).toFixed(2) + "B";
+  if (abs >= 1e6) return (v / 1e6).toFixed(2) + "M";
+  if (abs >= 1e3) return (v / 1e3).toFixed(2) + "K";
+  return String(Math.round(v));
+}
+
+function toggleWatchlist(sym) {
+  const i = appState.tickers.indexOf(sym);
+  if (i >= 0) {
+    if (appState.tickers.length <= 1) { setStatus("Watchlist needs at least one ticker.", true); return; }
+    appState.tickers.splice(i, 1);
   } else {
-    el.textContent = "";
+    appState.tickers.unshift(sym);
   }
+  renderWatchlist();
+  renderTickerHeader();
+}
+
+// Company identity + live stats + watchlist/report actions for the active
+// ticker, rendered above the chart toolbar. Metadata (name/sector/industry/
+// market cap/52W range) comes from Agent 1's TickerSummary — best-effort, so
+// any field can be missing until (or even after) a fetch resolves.
+function renderTickerHeader() {
+  const host = $("#ws-tk-header");
+  if (!host) return;
+  const sym = appState.active;
+  const s = appState.summaries[sym];
+  const q = appState.quotes[sym];
+  const inWatchlist = appState.tickers.includes(sym);
+
+  if (!sym) { host.innerHTML = ""; return; }
+
+  const price = q && q.price != null ? q.price : (s ? s.latest_close : null);
+  const changePct = q && q.change_pct != null ? q.change_pct : (s ? s.pct_return : null);
+  const priceCls = changePct == null ? "" : changePct >= 0 ? "pos" : "neg";
+  const lastVolume = s && s.price_history && s.price_history.length
+    ? s.price_history[s.price_history.length - 1].volume
+    : null;
+
+  const tags = [s && s.sector, s && s.industry].filter(Boolean);
+
+  host.innerHTML = `
+    <div class="tk-header">
+      <div class="tk-avatar">${esc((sym || "?").slice(0, 1))}</div>
+      <div class="tk-id">
+        <div class="tk-id-row">
+          <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em">${esc(sym || "—")}</h2>
+          <span class="px num">${price == null ? "—" : fmtUSD(price)}${
+            changePct == null ? "" : ` <span class="${priceCls}">${fmtPct(changePct)}</span>`
+          }</span>
+        </div>
+        ${s && s.company_name ? `<div class="tk-name">${esc(s.company_name)}</div>` : ""}
+        ${tags.length ? `<div class="tk-tags">${tags.map((t) => `<span class="tk-tag">${esc(t)}</span>`).join("")}</div>` : ""}
+        <div class="tk-stats">
+          <div class="tk-stat"><span class="lbl">Market Cap</span><span class="val">${s && s.market_cap != null ? "$" + fmtCompact(s.market_cap) : "—"}</span></div>
+          <div class="tk-stat"><span class="lbl">Volume</span><span class="val">${lastVolume != null ? fmtCompact(lastVolume) : "—"}</span></div>
+          <div class="tk-stat"><span class="lbl">52W Range</span><span class="val">${
+            s && s.week52_low != null && s.week52_high != null
+              ? `${fmtUSD(s.week52_low)} – ${fmtUSD(s.week52_high)}`
+              : "—"
+          }</span></div>
+        </div>
+      </div>
+      <div class="tk-actions">
+        <button class="tk-btn${inWatchlist ? " on" : ""}" id="tk-watchlist-btn" type="button">${inWatchlist ? "✓ In Watchlist" : "+ Add to Watchlist"}</button>
+        <button class="tk-btn primary" id="tk-report-btn" type="button">Generate Report</button>
+      </div>
+    </div>`;
+
+  const wlBtn = $("#tk-watchlist-btn");
+  if (wlBtn) wlBtn.addEventListener("click", () => toggleWatchlist(sym));
+  const repBtn = $("#tk-report-btn");
+  if (repBtn) repBtn.addEventListener("click", generateReportForActive);
+}
+
+// "Generate Report" — runs the full Agent 1/2/2.5/3 pipeline for just the
+// active ticker (rather than the whole watchlist) and merges the result into
+// appState without disturbing any other ticker's existing report.
+async function generateReportForActive() {
+  const sym = appState.active;
+  if (!sym) return;
+  const btn = $("#tk-report-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
+  setStatus(`Generating report for ${sym} … ~30-60s.`);
+
+  try {
+    const res = await fetch("analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers: [sym], timeframe: appState.timeframe }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    const st = data.state || {};
+    (st.historical_data || []).forEach((h) => { appState.summaries[h.ticker] = h; });
+    (st.news_context || []).forEach((n) => { appState.news[n.ticker] = n; });
+
+    const newReports = (st.final_decision && st.final_decision.reports) || [];
+    if (!appState.decision) {
+      appState.decision = st.final_decision || null;
+    } else {
+      newReports.forEach((r) => {
+        const idx = appState.decision.reports.findIndex((x) => x.ticker === r.ticker);
+        if (idx >= 0) appState.decision.reports[idx] = r; else appState.decision.reports.push(r);
+      });
+      if (st.final_decision) appState.decision.error = st.final_decision.error || null;
+    }
+    if (st.fundamental_report) appState.fundamental = st.fundamental_report;
+    (st.failed_tickers || []).forEach((f) => console.warn(`[report] ${f.ticker}: ${f.error}`));
+
+    setFooterUpdated();
+    setStatus(`Report ready for ${sym}.`);
+    renderAgent3();
+    await renderWorkspace();
+  } catch (err) {
+    setStatus(`Report failed: ${err.message}`, true);
+  } finally {
+    const b = $("#tk-report-btn");
+    if (b) { b.disabled = false; b.textContent = "Generate Report"; }
+  }
+}
+
+function setFooterUpdated() {
+  const el = $("#footer-updated");
+  if (el) el.textContent = "Last updated " + new Date().toLocaleTimeString();
 }
 
 // ── right panel: Agent 3 intelligence ─────────────────────────────────────
@@ -761,33 +1137,51 @@ function renderAgent3() {
   if (appState.fundamental) host.appendChild(rawDetails("Fundamental report (Agent 2)", appState.fundamental));
 }
 
+function riskIconSVG() {
+  return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+}
+
 function agent3Report(r) {
   const wrap = document.createElement("div");
   const rec = r.recommendation || "Hold";
+  const conf = r.confidence || "Medium";
+  const insights = r.key_insights || [];
   wrap.innerHTML = `
     <div class="verdict">
       <span class="badge ${esc(rec)}">${esc(rec)}</span>
       <h2 style="margin:0">${esc(r.ticker)}</h2>
     </div>
-    <div class="a3-section">
-      <h3>Executive thesis</h3>
+    <div class="a3-head">
+      <span class="conf-badge ${esc(conf)}">Confidence: ${esc(conf)}</span>
+    </div>
+    <div class="a3-tabs" role="tablist">
+      <button type="button" class="a3-tab active" data-tab="thesis">Executive Thesis</button>
+      <button type="button" class="a3-tab" data-tab="insights">Key Insights</button>
+    </div>
+    <div class="a3-tabpanel active" data-panel="thesis">
       <div class="a3-thesis">${
         String(r.executive_thesis || "").split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`).join("")
       }</div>
     </div>
-    <div class="a3-section">
-      <h3>Dated catalyst timeline</h3>
-      ${(r.catalyst_timeline || []).length
-        ? `<ul class="timeline">${(r.catalyst_timeline || []).map(catalystRow).join("")}</ul>`
-        : `<p class="hint">No dated catalysts for this ticker.</p>`}
+    <div class="a3-tabpanel" data-panel="insights">
+      ${insights.length
+        ? `<ul class="key-insights">${insights.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
+        : `<p class="hint">No key insights returned.</p>`}
     </div>
     <div class="a3-section">
       <h3>Probabilistic scenario matrix</h3>
       ${scenarioTable(r.scenarios || [])}
       ${(r.downside_risks || []).length
-        ? `<ul class="risks">${(r.downside_risks || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
+        ? `<ul class="risks icon">${(r.downside_risks || []).map((x) => `<li>${riskIconSVG()}<span>${esc(x)}</span></li>`).join("")}</ul>`
         : ""}
     </div>`;
+
+  wrap.querySelectorAll(".a3-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      wrap.querySelectorAll(".a3-tab").forEach((b) => b.classList.toggle("active", b === btn));
+      wrap.querySelectorAll(".a3-tabpanel").forEach((p) => p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+    });
+  });
   return wrap;
 }
 
@@ -817,6 +1211,7 @@ async function runFullAnalysis() {
 
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     setStatus(`Done in ${secs}s · ${data.status}`);
+    setFooterUpdated();
     renderWatchlist();
     renderAgent3();
     await renderWorkspace();
@@ -877,6 +1272,46 @@ function catalystRow(k) {
   </li>`;
 }
 
+// "Recent Headlines" + "Catalyst Timeline" side-by-side cards in the center
+// panel, below the Technical Indicators cards. Headlines come from Agent
+// 2.5 (available whenever a full run has touched this ticker); the catalyst
+// timeline comes from Agent 3's report for the same ticker — both only exist
+// after a full analysis, so the whole row is omitted until then.
+function renderNewsCatalystRow(host, sym) {
+  const news = appState.news[sym];
+  const report = appState.decision && (appState.decision.reports || []).find((r) => r.ticker === sym);
+  const hasNews = news && (news.items || []).length;
+  const hasCatalysts = report && (report.catalyst_timeline || []).length;
+  if (!news && !report) { host.innerHTML = ""; return; }
+
+  const newsCard = card("Recent Headlines");
+  if (hasNews) {
+    const ul = document.createElement("ul");
+    ul.className = "headlines";
+    ul.innerHTML = news.items.slice(0, 6).map((it) => {
+      const d = it.published_date ? `<span class="d">${esc(it.published_date.slice(0, 10))}</span> · ` : "";
+      return `<li>${d}<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a></li>`;
+    }).join("");
+    newsCard.appendChild(ul);
+  } else {
+    newsCard.insertAdjacentHTML("beforeend", `<p class="hint">No recent headlines for ${esc(sym)}.</p>`);
+  }
+
+  const catCard = card("Catalyst Timeline");
+  if (hasCatalysts) {
+    catCard.insertAdjacentHTML("beforeend", `<ul class="timeline">${report.catalyst_timeline.map(catalystRow).join("")}</ul>`);
+  } else {
+    catCard.insertAdjacentHTML("beforeend", `<p class="hint">No dated catalysts for ${esc(sym)}.</p>`);
+  }
+
+  const row = document.createElement("div");
+  row.className = "split-row";
+  row.appendChild(newsCard);
+  row.appendChild(catCard);
+  host.innerHTML = "";
+  host.appendChild(row);
+}
+
 function scenarioTable(scen) {
   if (!scen.length) return `<p class="hint">No scenarios returned.</p>`;
   const order = { bull: 0, base: 1, bear: 2 };
@@ -886,9 +1321,10 @@ function scenarioTable(scen) {
       <td class="prob">${s.probability == null ? "—" : Math.round(s.probability * 100) + "%"}</td>
       <td>${esc(s.drivers || "—")}</td>
       <td><b style="color:var(--muted)">Invalidation:</b> ${esc(s.invalidation_trigger || "—")}</td>
+      <td>${esc(s.investment_impact || "—")}</td>
     </tr>`).join("");
   return `<div style="overflow-x:auto"><table class="scen">
-    <thead><tr><th>Case</th><th class="prob">Prob.</th><th>Drivers</th><th>Invalidation trigger</th></tr></thead>
+    <thead><tr><th>Case</th><th class="prob">Prob.</th><th>Drivers</th><th>Invalidation trigger</th><th>Investment Impact</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 
@@ -953,7 +1389,7 @@ function returnsCard(hist) {
   return c;
 }
 
-const TIMEFRAMES = ["1D", "5D", "1M", "6M", "1Y", "ALL"];
+const TIMEFRAMES = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "ALL"];
 
 // [1D … ALL] selector for the active ticker. Switching sets appState.timeframe
 // and re-renders the workspace, which fetches Agent 1 for the active ticker at
@@ -1021,16 +1457,23 @@ function drawChartInto(slot, summary) {
 // buildCandleCharts()'s setIndicator(). `insightName` is the human label sent
 // to /api/analyze-indicator; `field` is the price_history key holding its
 // latest value (omitted for composite indicators like MACD).
+// Overlay indicators toggled from the chart-toolbar dropdown (drawn directly
+// on the candlestick pane). RSI and MACD used to live here too, but now have
+// their own permanent "Technical Indicators" cards below the chart (see
+// technicalIndicatorsSection()) with their own AI-insight buttons — they
+// still share the RSI_INDICATOR / MACD_INDICATOR descriptors and the same
+// addInsightCard/removeInsightCard plumbing, just triggered differently.
 const INDICATORS = [
   { key: "ma_50",  label: "MA-50",  insightName: "50-day moving average", field: "ma_50" },
   { key: "ma_200", label: "MA-200", insightName: "200-day moving average", field: "ma_200" },
   { key: "ema_9",  label: "EMA-9",  insightName: "9-day EMA", field: "ema_9" },
   { key: "ema_20", label: "EMA-20", insightName: "20-day EMA", field: "ema_20" },
-  { key: "rsi",    label: "RSI",    insightName: "14-day RSI", field: "rsi_14" },
-  { key: "macd",   label: "MACD",   insightName: "MACD (12/26/9)" },
   { key: "bb",     label: "Bollinger Bands", insightName: "Bollinger Bands (SMA-20, 2σ)" },
   { key: "vol",    label: "Volume", noInsight: true },
 ];
+const RSI_INDICATOR = { key: "rsi", label: "RSI", insightName: "14-day RSI", field: "rsi_14" };
+const MACD_INDICATOR = { key: "macd", label: "MACD", insightName: "MACD (12/26/9)" };
+const ALL_INDICATOR_DESCRIPTORS = [...INDICATORS, RSI_INDICATOR, MACD_INDICATOR];
 
 // Latest non-null value for an indicator, pulled from the price_history array.
 // Scalars return a number; MACD returns a {macd_line, signal_line,
@@ -1053,7 +1496,7 @@ function latestIndicatorValue(key, series) {
     };
     return v.bb_upper == null && v.bb_middle == null && v.bb_lower == null ? null : v;
   }
-  const desc = INDICATORS.find((d) => d.key === key);
+  const desc = ALL_INDICATOR_DESCRIPTORS.find((d) => d.key === key);
   return desc && desc.field ? lastOf(desc.field) : null;
 }
 
@@ -1161,30 +1604,21 @@ function renderInsightBody(el, text) {
 // Reset per analyze() run (prices — and therefore the correct read — change).
 let insightCache = {};
 
-// Pill toggle bar + a responsive grid of runtime AI insight cards for one
-// ticker. ctx = { ticker, series }. Each indicator toggled ON injects its own
-// card (id `insight-card-<ticker>-<key>`); toggled OFF removes that card.
-// Returns { bar, grid } — the toggle-pill bar and the AI insight grid as two
-// separate elements, so the caller can place the (always-visible) controls
-// above the chart and the (secondary, result-of-a-click) insight cards
-// wherever makes sense, typically below it.
-function indicatorPanel(controller, ctx) {
-  const bar = document.createElement("div");
-  bar.className = "indicator-bar";
-  bar.setAttribute("role", "group");
-  bar.setAttribute("aria-label", "Toggle chart indicators");
-
-  // Ticker-scoped id so the grid stays unique when several ticker cards render.
-  const grid = document.createElement("div");
-  grid.id = `indicator-insights-${ctx.ticker}`;
-  grid.className =
-    "insights-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 empty:hidden";
-
+// A responsive grid of runtime AI insight cards for one ticker, plus the
+// add/remove/toggle logic behind it. ctx = { ticker, series }. Shared by the
+// indicator-dropdown pills (MA/EMA/BB/Volume) and the permanent RSI/MACD
+// Technical Indicator cards, so every indicator's "AI insight" — however it
+// is triggered — lands in the same grid with the same cache/retry behaviour.
+function createInsightController(grid, ctx) {
   const cardId = (key) => `insight-card-${ctx.ticker}-${key}`;
 
   function removeInsightCard(key) {
     const el = document.getElementById(cardId(key));
     if (el) el.remove();                              // container :empty → hidden
+  }
+
+  function isActive(key) {
+    return !!document.getElementById(cardId(key));
   }
 
   async function addInsightCard(key, label, insightName) {
@@ -1240,6 +1674,18 @@ function indicatorPanel(controller, ctx) {
     }
   }
 
+  return { addInsightCard, removeInsightCard, isActive };
+}
+
+// Pill toggle bar for the chart-toolbar dropdown (MA/EMA/BB/Volume overlays).
+// ctx = { ticker, series }; insightCtl comes from createInsightController()
+// and is shared with the Technical Indicator cards' RSI/MACD AI-insight
+// buttons so every indicator's insight lands in the same grid.
+function indicatorPanel(controller, ctx, insightCtl) {
+  const bar = document.createElement("div");
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", "Toggle chart indicators");
+
   INDICATORS.forEach(({ key, label, insightName, noInsight }) => {
     const on = controller.state[key] !== false;
     const btn = document.createElement("button");
@@ -1260,38 +1706,212 @@ function indicatorPanel(controller, ctx) {
       }
       if (noInsight) return;              // volume has no AI insight card
       if (next) {
-        addInsightCard(key, label, insightName || label).catch((e) => console.error("[insight]", e));
+        insightCtl.addInsightCard(key, label, insightName || label).catch((e) => console.error("[insight]", e));
       } else {
-        removeInsightCard(key);
+        insightCtl.removeInsightCard(key);
       }
     });
     bar.appendChild(btn);
   });
 
-  return { bar, grid };
+  return bar;
 }
 
-// Candlestick price pane (close + MA-50 + MA-200 overlays) with a time-synced
-// RSI-14 sub-pane below it (70 / 30 reference lines). TradingView's
-// lightweight-charts. Returns a controller { state, setIndicator(key, on) },
-// or null when the library is missing or there is nothing to draw.
+// Wires an "AI Insight" toggle link inside a Technical Indicator card (RSI,
+// MACD) to the shared insightCtl — clicking it adds/removes the same insight
+// card the indicator-dropdown pills would, keyed by the same `key`, so the
+// cache and retry behaviour is identical no matter which control triggered it.
+function wireAiToggle(btn, key, label, insightName, insightCtl) {
+  const sync = () => { btn.textContent = insightCtl.isActive(key) ? "Hide AI Insight" : "Show AI Insight"; };
+  sync();
+  btn.addEventListener("click", () => {
+    if (insightCtl.isActive(key)) {
+      insightCtl.removeInsightCard(key);
+    } else {
+      insightCtl.addInsightCard(key, label, insightName).catch((e) => console.error("[insight]", e));
+    }
+    sync();
+  });
+}
+
+// Small, non-interactive lightweight-charts line pane for a Technical
+// Indicator card (e.g. RSI). `opts.min`/`opts.max` pin the price scale
+// (RSI is always 0-100); `opts.refLines` draws dashed reference levels
+// (e.g. RSI's 70/30) colored [sell, buy, ...].
+function buildMiniLineChart(container, points, opts = {}) {
+  const LC = window.LightweightCharts;
+  if (!LC || typeof LC.createChart !== "function" || !points.length) {
+    container.innerHTML = `<p class="hint" style="margin:0;font-size:11px">No data.</p>`;
+    return null;
+  }
+  const muted = cssVar("--muted"), accent = cssVar("--accent"), buy = cssVar("--buy"), sell = cssVar("--sell");
+  const chart = LC.createChart(container, {
+    width: container.clientWidth || 200, height: 64,
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 9, attributionLogo: false },
+    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+    rightPriceScale: { visible: false },
+    leftPriceScale: { visible: false },
+    timeScale: { visible: false },
+    handleScroll: false, handleScale: false,
+  });
+  const line = chart.addLineSeries({
+    color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    ...(opts.min != null
+      ? { autoscaleInfoProvider: () => ({ priceRange: { minValue: opts.min, maxValue: opts.max } }) }
+      : {}),
+  });
+  line.setData(points);
+  (opts.refLines || []).forEach((v, i) => {
+    line.createPriceLine({
+      price: v, color: i === 0 ? sell : buy, lineWidth: 1,
+      lineStyle: LC.LineStyle ? LC.LineStyle.Dotted : 1, axisLabelVisible: false,
+    });
+  });
+  const ro = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    if (w > 0) { chart.applyOptions({ width: w }); chart.timeScale().fitContent(); }
+  });
+  ro.observe(container);
+  requestAnimationFrame(() => { if (container.clientWidth > 0) chart.timeScale().fitContent(); });
+  lwCharts.push({ chart, el: container, ro });
+  return chart;
+}
+
+// Small MACD histogram + line + signal pane for the MACD Technical Indicator
+// card — same idea as buildMiniLineChart but with three series.
+function buildMiniMacdChart(container, series) {
+  const LC = window.LightweightCharts;
+  const T = (p) => toChartTime(p.date);
+  const histPts = series.filter((p) => p.macd_histogram != null)
+    .map((p) => ({ time: T(p), value: p.macd_histogram, color: (p.macd_histogram >= 0 ? cssVar("--buy") : cssVar("--sell")) + "aa" }));
+  const linePts = series.filter((p) => p.macd_line != null).map((p) => ({ time: T(p), value: p.macd_line }));
+  const sigPts = series.filter((p) => p.signal_line != null).map((p) => ({ time: T(p), value: p.signal_line }));
+  if (!LC || typeof LC.createChart !== "function" || !histPts.length) {
+    container.innerHTML = `<p class="hint" style="margin:0;font-size:11px">No data.</p>`;
+    return null;
+  }
+  const muted = cssVar("--muted"), accent = cssVar("--accent"), sell = cssVar("--sell");
+  const chart = LC.createChart(container, {
+    width: container.clientWidth || 200, height: 64,
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 9, attributionLogo: false },
+    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+    rightPriceScale: { visible: false },
+    timeScale: { visible: false },
+    handleScroll: false, handleScale: false,
+  });
+  const hist = chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false, base: 0 });
+  hist.setData(histPts);
+  const line = chart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  line.setData(linePts);
+  const sig = chart.addLineSeries({ color: sell, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  sig.setData(sigPts);
+  const ro = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    if (w > 0) { chart.applyOptions({ width: w }); chart.timeScale().fitContent(); }
+  });
+  ro.observe(container);
+  requestAnimationFrame(() => { if (container.clientWidth > 0) chart.timeScale().fitContent(); });
+  lwCharts.push({ chart, el: container, ro });
+  return chart;
+}
+
+// The 4 compact "Technical Indicators" cards below the main chart: RSI and
+// MACD mini-charts (each with its own AI-insight toggle, sharing insightCtl
+// with the indicator dropdown), plus text-stat readouts for the moving
+// averages and Bollinger Bands already drawn as overlays on the main chart.
+function technicalIndicatorsSection(ctx, insightCtl) {
+  const series = ctx.series;
+  const last = (f) => {
+    for (let i = series.length - 1; i >= 0; i--) if (series[i][f] != null) return series[i][f];
+    return null;
+  };
+  const wrap = document.createElement("div");
+  wrap.className = "tech-grid";
+
+  // RSI
+  const rsiVal = last("rsi_14");
+  const rsiCard = document.createElement("div");
+  rsiCard.className = "tech-card";
+  rsiCard.innerHTML = `
+    <div class="tech-card-head">
+      <span class="tech-card-title">RSI (14)</span>
+      <span class="tech-card-value">${rsiVal == null ? "—" : fmtRSI(rsiVal)}</span>
+    </div>
+    <div class="tech-mini" id="tech-mini-rsi-${esc(ctx.ticker)}"></div>`;
+  const aiRsi = document.createElement("button");
+  aiRsi.type = "button"; aiRsi.className = "ai-link";
+  wireAiToggle(aiRsi, RSI_INDICATOR.key, RSI_INDICATOR.label, RSI_INDICATOR.insightName, insightCtl);
+  rsiCard.appendChild(aiRsi);
+  wrap.appendChild(rsiCard);
+  buildMiniLineChart(
+    rsiCard.querySelector(`#tech-mini-rsi-${CSS.escape(ctx.ticker)}`),
+    series.filter((p) => p.rsi_14 != null).map((p) => ({ time: toChartTime(p.date), value: p.rsi_14 })),
+    { min: 0, max: 100, refLines: [70, 30] },
+  );
+
+  // MACD
+  const macdLineVal = last("macd_line");
+  const macdCard = document.createElement("div");
+  macdCard.className = "tech-card";
+  macdCard.innerHTML = `
+    <div class="tech-card-head">
+      <span class="tech-card-title">MACD (12/26/9)</span>
+      <span class="tech-card-value">${macdLineVal == null ? "—" : macdLineVal.toFixed(2)}</span>
+    </div>
+    <div class="tech-mini" id="tech-mini-macd-${esc(ctx.ticker)}"></div>`;
+  const aiMacd = document.createElement("button");
+  aiMacd.type = "button"; aiMacd.className = "ai-link";
+  wireAiToggle(aiMacd, MACD_INDICATOR.key, MACD_INDICATOR.label, MACD_INDICATOR.insightName, insightCtl);
+  macdCard.appendChild(aiMacd);
+  wrap.appendChild(macdCard);
+  buildMiniMacdChart(macdCard.querySelector(`#tech-mini-macd-${CSS.escape(ctx.ticker)}`), series);
+
+  // Moving Averages (text stats — already toggleable as chart overlays)
+  const maCard = document.createElement("div");
+  maCard.className = "tech-card";
+  const maRow = (dotColor, name, val) => `
+    <div class="tech-stat-row">
+      <span class="tech-stat-name"><span class="dot" style="background:${dotColor}"></span>${esc(name)}</span>
+      <span class="tech-stat-val">${fmtUSD(val)}</span>
+    </div>`;
+  maCard.innerHTML = `
+    <div class="tech-card-head"><span class="tech-card-title">Moving Averages</span></div>
+    ${maRow("var(--ink)", "MA-50", last("ma_50"))}
+    ${maRow("var(--muted)", "MA-200", last("ma_200"))}
+    ${maRow("var(--ema-fast)", "EMA-9", last("ema_9"))}
+    ${maRow("var(--ema)", "EMA-20", last("ema_20"))}`;
+  wrap.appendChild(maCard);
+
+  // Bollinger Bands (text stats — already toggleable as a chart overlay)
+  const bbCard = document.createElement("div");
+  bbCard.className = "tech-card";
+  const bbRow = (name, val) => `
+    <div class="tech-stat-row"><span class="tech-stat-name">${esc(name)}</span><span class="tech-stat-val">${fmtUSD(val)}</span></div>`;
+  bbCard.innerHTML = `
+    <div class="tech-card-head"><span class="tech-card-title">Bollinger Bands</span></div>
+    ${bbRow("Upper", last("bb_upper"))}
+    ${bbRow("Middle", last("bb_middle"))}
+    ${bbRow("Lower", last("bb_lower"))}`;
+  wrap.appendChild(bbCard);
+
+  return wrap;
+}
+
+// Candlestick price pane (close + MA-50/200 + EMA-9/20 + Bollinger overlays,
+// volume histogram). RSI and MACD moved out to their own permanent compact
+// cards (technicalIndicatorsSection()) so this is a single pane now —
+// TradingView's lightweight-charts. Returns a controller
+// { state, setIndicator(key, on), updateLastPrice, destroy }, or null when
+// the library is missing or there is nothing to draw.
 function buildCandleCharts(container, series) {
   const LC = window.LightweightCharts;
   const priceWrap = document.createElement("div");
   priceWrap.className = "lw-wrap price";
-  const rsiWrap = document.createElement("div");
-  rsiWrap.className = "lw-wrap sub rsi";
-  const macdWrap = document.createElement("div");
-  macdWrap.className = "lw-wrap sub macd";
   container.appendChild(priceWrap);
-  container.appendChild(rsiWrap);
-  container.appendChild(macdWrap);
 
   if (!LC || typeof LC.createChart !== "function") {
     console.error("[chart] lightweight-charts failed to load");
     priceWrap.innerHTML = `<p class="hint">Chart library failed to load — check the network tab.</p>`;
-    rsiWrap.remove();
-    macdWrap.remove();
     return null;
   }
 
@@ -1307,9 +1927,6 @@ function buildCandleCharts(container, series) {
   const ma200Pts = series.filter((p) => p.ma_200 != null).map((p) => ({ time: T(p), value: p.ma_200 }));
   const ema9Pts  = series.filter((p) => p.ema_9 != null).map((p) => ({ time: T(p), value: p.ema_9 }));
   const ema20Pts = series.filter((p) => p.ema_20 != null).map((p) => ({ time: T(p), value: p.ema_20 }));
-  const rsiPts   = series.filter((p) => p.rsi_14 != null).map((p) => ({ time: T(p), value: p.rsi_14 }));
-  const macdLinePts   = series.filter((p) => p.macd_line != null).map((p) => ({ time: T(p), value: p.macd_line }));
-  const macdSignalPts = series.filter((p) => p.signal_line != null).map((p) => ({ time: T(p), value: p.signal_line }));
   const bbUpperPts  = series.filter((p) => p.bb_upper != null).map((p) => ({ time: T(p), value: p.bb_upper }));
   const bbMiddlePts = series.filter((p) => p.bb_middle != null).map((p) => ({ time: T(p), value: p.bb_middle }));
   const bbLowerPts  = series.filter((p) => p.bb_lower != null).map((p) => ({ time: T(p), value: p.bb_lower }));
@@ -1317,21 +1934,18 @@ function buildCandleCharts(container, series) {
     .filter((p) => p.volume != null)
     .map((p) => ({ time: T(p), value: p.volume, close: p.close, open: p.open }));
 
-  console.log("[chart] building panes:", {
+  console.log("[chart] building price pane:", {
     bars: candlePts.length, ma50: ma50Pts.length, ma200: ma200Pts.length,
-    ema9: ema9Pts.length, ema20: ema20Pts.length, rsi: rsiPts.length,
-    macd: macdLinePts.length, bb: bbUpperPts.length, vol: volPts.length,
+    ema9: ema9Pts.length, ema20: ema20Pts.length, bb: bbUpperPts.length, vol: volPts.length,
   });
 
   if (!candlePts.length) {
     console.warn("[chart] no usable candles in series");
     priceWrap.innerHTML = `<p class="hint">No chart data available.</p>`;
-    rsiWrap.remove();
-    macdWrap.remove();
     return null;
   }
 
-  const ink = cssVar("--ink"), accent = cssVar("--accent"), muted = cssVar("--muted");
+  const ink = cssVar("--ink"), muted = cssVar("--muted");
   const grid = cssVar("--border"), buy = cssVar("--buy"), sell = cssVar("--sell");
   const emaColor = cssVar("--ema"), emaFastColor = cssVar("--ema-fast");
   const bbColor = cssVar("--bb"), bbFill = cssVar("--bb-fill");
@@ -1339,7 +1953,7 @@ function buildCandleCharts(container, series) {
   const common = {
     layout: {
       background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 11,
-      attributionLogo: false,   // drop the small "TradingView" watermark — one per pane is visual noise
+      attributionLogo: false,   // drop the small "TradingView" watermark
     },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     // autoScale keeps the Y-axis fitted to whatever data is on the pane — each
@@ -1363,18 +1977,11 @@ function buildCandleCharts(container, series) {
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
   };
 
-  // Fixed sub-pane height (matches the .lw-wrap.sub CSS) so the RSI / MACD
-  // panes can collapse via a CSS height transition without the canvas resizing.
-  const SUB_H = 150;
-
   // Fall back to a sane width: the card is still detached from the DOM here, so
   // clientWidth is 0 — the ResizeObserver below fixes the real width once it is
   // attached and laid out.
   const priceChart = LC.createChart(priceWrap, {
     ...common, width: priceWrap.clientWidth || 640, height: priceWrap.clientHeight || 320,
-  });
-  const rsiChart = LC.createChart(rsiWrap, {
-    ...common, width: rsiWrap.clientWidth || 640, height: SUB_H,
   });
 
   const candle = priceChart.addCandlestickSeries({
@@ -1443,124 +2050,29 @@ function buildCandleCharts(container, series) {
   });
   bbMiddle.setData(bbMiddlePts);
 
-  rsiChart.priceScale("right").applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
-  const rsi = rsiChart.addLineSeries({
-    color: accent, lineWidth: 2, priceLineVisible: false,
-    autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
-  });
-  rsi.setData(rsiPts);
-
-  const dash = LC.LineStyle ? LC.LineStyle.Dashed : 2;
-  rsi.createPriceLine({ price: 70, color: sell, lineWidth: 1, lineStyle: dash, axisLabelVisible: true, title: "70" });
-  rsi.createPriceLine({ price: 30, color: buy, lineWidth: 1, lineStyle: dash, axisLabelVisible: true, title: "30" });
-
-  // ── MACD (12/26/9) sub-pane: histogram bars + MACD line + signal line ──
-  const macdHistPts = series
-    .filter((p) => p.macd_histogram != null)
-    .map((p) => ({ time: T(p), value: p.macd_histogram, color: p.macd_histogram >= 0 ? buy : sell }));
-
-  const macdChart = LC.createChart(macdWrap, {
-    ...common, width: macdWrap.clientWidth || 640, height: SUB_H,
-  });
-  macdChart.priceScale("right").applyOptions({ scaleMargins: { top: 0.12, bottom: 0.12 } });
-
-  const macdHist = macdChart.addHistogramSeries({
-    priceLineVisible: false, lastValueVisible: false, base: 0,
-  });
-  macdHist.setData(macdHistPts);
-
-  const macdLine = macdChart.addLineSeries({
-    color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-  });
-  macdLine.setData(macdLinePts);
-
-  const macdSignal = macdChart.addLineSeries({
-    color: sell, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-    crosshairMarkerVisible: false,
-  });
-  macdSignal.setData(macdSignalPts);
-
-  macdLine.createPriceLine({ price: 0, color: muted, lineWidth: 1, lineStyle: dash, axisLabelVisible: false });
-
-  // legends
+  // legend
   priceWrap.insertAdjacentHTML("beforeend",
     `<div class="lw-legend"><b class="k-close">Candles</b>` +
     `<b class="k-ma50">— MA-50</b><b class="k-ma200">-- MA-200</b>` +
     `<b class="k-ema9">— EMA-9</b><b class="k-ema20">— EMA-20</b>` +
     `<b class="k-bb">≈ Bollinger (20, 2σ)</b><b class="k-vol">▮ Volume</b></div>`);
-  rsiWrap.insertAdjacentHTML("beforeend", `<div class="lw-legend"><b class="k-rsi">RSI-14</b></div>`);
-  macdWrap.insertAdjacentHTML("beforeend",
-    `<div class="lw-legend"><b class="k-macd">— MACD</b>` +
-    `<b class="k-macdsig">— Signal</b><b class="k-macdhist">▮ Histogram (12/26/9)</b></div>`);
 
-  // ── keep all three time axes locked together ──
-  const panes = [priceChart, rsiChart, macdChart];
-  let syncing = false;
-  panes.forEach((src) => src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-    if (syncing || !range) return;
-    syncing = true;
-    try {
-      for (const dst of panes) if (dst !== src) dst.timeScale().setVisibleLogicalRange(range);
-    } catch (err) {
-      console.error("[chart] range sync failed:", err);
-    }
-    syncing = false;
-  }));
-
-  // ── crosshair sync (best-effort; keyed on the ISO date string) ──
-  const closeByTime = new Map(series.map((p) => [toChartTime(p.date), p.close]));
-  const rsiByTime = new Map(rsiPts.map((p) => [p.time, p.value]));
-  const macdByTime = new Map(macdLinePts.map((p) => [p.time, p.value]));
-  const mirrorCrosshair = (from, targets) => from.subscribeCrosshairMove((param) => {
-    const t = param && param.time != null ? param.time : null;
-    for (const { chart, byTime, series: s } of targets) {
-      const v = t != null ? byTime.get(t) : undefined;
-      if (v == null) chart.clearCrosshairPosition();
-      else chart.setCrosshairPosition(v, t, s);
-    }
-  });
-  mirrorCrosshair(priceChart, [
-    { chart: rsiChart, byTime: rsiByTime, series: rsi },
-    { chart: macdChart, byTime: macdByTime, series: macdLine },
-  ]);
-  mirrorCrosshair(rsiChart, [
-    { chart: priceChart, byTime: closeByTime, series: candle },
-    { chart: macdChart, byTime: macdByTime, series: macdLine },
-  ]);
-  mirrorCrosshair(macdChart, [
-    { chart: priceChart, byTime: closeByTime, series: candle },
-    { chart: rsiChart, byTime: rsiByTime, series: rsi },
-  ]);
-
-  // ── size each pane to its container: fires once on DOM attach (0 → real
-  //    width, the fix for the blank chart), on window resize, and whenever a
-  //    sub-pane is toggled back in. Sub-panes keep a fixed height (SUB_H) so
-  //    the CSS collapse animation is smooth. ──
+  // ── size the pane to its container: fires once on DOM attach (0 → real
+  //    width, the fix for the blank chart) and on window resize. ──
   let fitted = false;
-  const sizeWidth = (chart, el, h) => {
-    const w = el.clientWidth;
-    if (w > 0) chart.applyOptions({ width: w, height: h });
-  };
   const relayout = () => {
-    sizeWidth(priceChart, priceWrap, priceWrap.clientHeight || 320);
-    sizeWidth(rsiChart, rsiWrap, SUB_H);
-    sizeWidth(macdChart, macdWrap, SUB_H);
-    if (!fitted && priceWrap.clientWidth > 0) {
-      panes.forEach((c) => c.timeScale().fitContent());
+    const w = priceWrap.clientWidth;
+    if (w > 0) priceChart.applyOptions({ width: w, height: priceWrap.clientHeight || 320 });
+    if (!fitted && w > 0) {
+      priceChart.timeScale().fitContent();
       fitted = true;
     }
   };
   const ro = new ResizeObserver(relayout);
   ro.observe(priceWrap);
-  ro.observe(rsiWrap);
-  ro.observe(macdWrap);
   relayout();
 
-  lwCharts.push(
-    { chart: priceChart, el: priceWrap, ro },
-    { chart: rsiChart, el: rsiWrap },
-    { chart: macdChart, el: macdWrap },
-  );
+  lwCharts.push({ chart: priceChart, el: priceWrap, ro });
 
   // ── trackpad pinch-to-zoom (TradingView-style), independent of plain scroll ──
   // A ctrl+wheel event only ever comes from a trackpad pinch gesture (or the
@@ -1583,8 +2095,6 @@ function buildCandleCharts(container, series) {
     }, { passive: false });
   }
   attachPinchZoom(priceChart, priceWrap);
-  attachPinchZoom(rsiChart, rsiWrap);
-  attachPinchZoom(macdChart, macdWrap);
 
   // ── indicator controller ──
   const state = {
@@ -1592,17 +2102,6 @@ function buildCandleCharts(container, series) {
     ema_9: ema9Pts.length > 0, ema_20: ema20Pts.length > 0,
     bb: bbUpperPts.length > 0,
     vol: volPts.length > 0,
-    rsi: rsiPts.length > 0,
-    macd: macdLinePts.length > 0,
-  };
-  rsiWrap.classList.toggle("collapsed", !state.rsi);
-  macdWrap.classList.toggle("collapsed", !state.macd);
-
-  // Show/hide a sub-pane via the CSS height transition, then let the
-  // ResizeObserver re-fit it on the next frame once it has real height.
-  const toggleSubPane = (wrap, on) => {
-    wrap.classList.toggle("collapsed", !on);
-    if (on) requestAnimationFrame(relayout);
   };
 
   function setIndicator(key, on) {
@@ -1616,8 +2115,6 @@ function buildCandleCharts(container, series) {
       bbLower.applyOptions({ visible: on });
     }
     else if (key === "vol") volume.applyOptions({ visible: on });
-    else if (key === "rsi") toggleSubPane(rsiWrap, on);
-    else if (key === "macd") toggleSubPane(macdWrap, on);
     else {
       console.warn(`[chart] unknown indicator key: ${key}`);
       return;
@@ -1641,32 +2138,15 @@ function buildCandleCharts(container, series) {
     try { candle.update(lastBar); } catch (err) { console.warn("[poll] candle.update:", err); }
   }
 
-  // Tear down just this chart group (used when a timeframe switch rebuilds it).
+  // Tear down just this chart (used when a timeframe switch rebuilds it).
   function destroy() {
     try { ro.disconnect(); } catch (_) { /* gone */ }
-    [priceChart, rsiChart, macdChart].forEach((ch) => {
-      const i = lwCharts.findIndex((e) => e.chart === ch);
-      if (i >= 0) lwCharts.splice(i, 1);
-      try { ch.remove(); } catch (_) { /* already removed */ }
-    });
+    const i = lwCharts.findIndex((e) => e.chart === priceChart);
+    if (i >= 0) lwCharts.splice(i, 1);
+    try { priceChart.remove(); } catch (_) { /* already removed */ }
   }
 
-  return { state, setIndicator, updateLastPrice, destroy };
-}
-
-function appendHeadlines(container, news) {
-  const items = (news && news.items) || [];
-  if (!items.length) return;
-  const ul = document.createElement("ul");
-  ul.className = "headlines";
-  ul.innerHTML = items.slice(0, 6).map((it) => {
-    const d = it.published_date ? `<span class="d">${esc(it.published_date.slice(0, 10))}</span> · ` : "";
-    return `<li>${d}<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a></li>`;
-  }).join("");
-  const h = document.createElement("h3");
-  h.textContent = "Recent headlines";
-  container.appendChild(h);
-  container.appendChild(ul);
+  return { state, setIndicator, updateLastPrice, destroy, chart: priceChart };
 }
 
 function baseOpts({ yTitle, xTicks = 6 } = {}) {
@@ -1743,6 +2223,134 @@ function startPolling() {
   pollTimer = setInterval(pollQuotes, POLL_INTERVAL_MS);
 }
 
+// ── left panel: market snapshot (major indices via the same /api/quote) ────
+const MARKET_INDICES = [
+  { symbol: "^GSPC", label: "S&P 500" },
+  { symbol: "^IXIC", label: "NASDAQ" },
+  { symbol: "^DJI",  label: "DOW JONES" },
+];
+let snapshotPolling = false;
+
+async function pollMarketSnapshot() {
+  if (snapshotPolling) return;
+  snapshotPolling = true;
+  try {
+    const syms = MARKET_INDICES.map((m) => m.symbol).join(",");
+    const res = await fetch("api/quote?tickers=" + encodeURIComponent(syms));
+    const data = await res.json();
+    const bySym = {};
+    (data.quotes || []).forEach((q) => { bySym[q.ticker] = q; });
+    const host = $("#market-snapshot");
+    if (!host) return;
+    host.innerHTML = MARKET_INDICES.map(({ symbol, label }) => {
+      const q = bySym[symbol];
+      const chg = q && q.change_pct != null ? q.change_pct : null;
+      const cls = chg == null ? "" : chg >= 0 ? "pos" : "neg";
+      return `<div class="snap-row">
+        <span class="snap-name">${esc(label)}</span>
+        <span class="snap-val">
+          <span class="snap-px">${q && q.price != null ? q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</span>
+          <span class="snap-chg ${cls}">${chg == null ? "—" : fmtPct(chg)}</span>
+        </span>
+      </div>`;
+    }).join("");
+  } catch (err) {
+    console.warn("[snapshot] fetch failed:", err);
+  } finally {
+    snapshotPolling = false;
+  }
+}
+
+let snapshotTimer = null;
+function startSnapshotPolling() {
+  if (snapshotTimer) return;
+  pollMarketSnapshot();
+  snapshotTimer = setInterval(pollMarketSnapshot, POLL_INTERVAL_MS * 3);
+}
+
+// ── app rail: Dashboard is the only wired route; everything else is a
+//    "coming soon" placeholder, and the collapse button just widens the rail
+//    to show text labels. ──
+function wireAppRail() {
+  const rail = $("#app-rail");
+  if (!rail) return;
+  rail.querySelectorAll(".rail-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const route = btn.dataset.route;
+      if (route === "dashboard") return;
+      setStatus(`${btn.querySelector(".rail-label").textContent} — coming soon.`);
+    });
+  });
+  const collapseBtn = $("#rail-collapse");
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", () => {
+      rail.classList.toggle("expanded");
+      collapseBtn.title = rail.classList.contains("expanded") ? "Collapse navigation" : "Expand navigation";
+    });
+  }
+}
+
+// ── chart toolbar: indicators dropdown + fullscreen + export ───────────────
+function wireChartToolbar() {
+  const dropdown = $("#ind-dropdown");
+  const dropdownBtn = $("#ind-dropdown-btn");
+  if (dropdown && dropdownBtn) {
+    dropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle("open");
+    });
+    document.addEventListener("click", (e) => {
+      if (dropdown.classList.contains("open") && !dropdown.contains(e.target)) {
+        dropdown.classList.remove("open");
+      }
+    });
+  }
+
+  const fsBtn = $("#chart-fullscreen");
+  if (fsBtn) {
+    fsBtn.addEventListener("click", () => {
+      const slot = $("#ws-chart");
+      if (!slot) return;
+      if (document.fullscreenElement) document.exitFullscreen();
+      else slot.requestFullscreen().catch((err) => console.warn("[chart] fullscreen failed:", err));
+    });
+  }
+
+  const exportBtn = $("#chart-export");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      if (!appState.chart || !appState.chart.chart || typeof appState.chart.chart.takeScreenshot !== "function") {
+        setStatus("Nothing to export yet.", true);
+        return;
+      }
+      try {
+        const canvas = appState.chart.chart.takeScreenshot();
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = `${appState.active || "chart"}-${appState.timeframe}.png`;
+        a.click();
+      } catch (err) {
+        console.error("[chart] export failed:", err);
+        setStatus("Chart export failed.", true);
+      }
+    });
+  }
+}
+
+// ── header search: jump to (or add) a ticker from anywhere ─────────────────
+function wireHeaderSearch() {
+  const input = $("#head-search-input");
+  if (!input) return;
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const sym = e.target.value.trim().toUpperCase();
+    if (!sym || !/^[A-Z][A-Z.\-]{0,9}$/.test(sym)) return;
+    if (!appState.tickers.includes(sym)) appState.tickers.unshift(sym);
+    e.target.value = "";
+    selectTicker(sym);
+  });
+}
+
 // ── wire up ──
 $("#run").addEventListener("click", runFullAnalysis);
 $("#ticker-search").addEventListener("input", renderWatchlist);
@@ -1759,10 +2367,14 @@ $("#ticker-search").addEventListener("keydown", (e) => {
   }
 });
 
+wireAppRail();
+wireChartToolbar();
+wireHeaderSearch();
 renderWatchlist();
 renderAgent3();
 renderWorkspace();
 startPolling();
+startSnapshotPolling();
 </script>
 </body>
 </html>
