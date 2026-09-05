@@ -1343,12 +1343,15 @@ function buildCandleCharts(container, series) {
     rightPriceScale: { borderColor: grid, autoScale: true, scaleMargins: { top: 0.16, bottom: 0.14 } },
     timeScale: { borderColor: grid, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
-    // Mouse-wheel pan/zoom is OFF: this chart sits inside a page the user
-    // scrolls vertically, and lightweight-charts' default wheel handling
-    // hijacks that scroll the moment the cursor is over a pane (the user has
-    // to detour to the edge of the panel to keep scrolling). Drag-to-pan,
-    // axis-drag-to-zoom and pinch (touch) still work; only the plain wheel
-    // gesture — the one that collides with page scroll — is disabled.
+    // Plain mouse-wheel pan/zoom is OFF: this chart sits inside a page the
+    // user scrolls vertically, and lightweight-charts' default wheel handling
+    // hijacks that scroll the moment the cursor is over a pane. Drag-to-pan,
+    // axis-drag-to-zoom and touch-pinch still work. Trackpad pinch-to-zoom
+    // (the TradingView-style "expand the chart" gesture) is restored below via
+    // a manual ctrl+wheel handler — browsers report a trackpad pinch as a
+    // `wheel` event with `ctrlKey: true`, which is otherwise indistinguishable
+    // from plain two-finger scroll, so it needs its own listener rather than
+    // a library flag.
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
   };
@@ -1551,6 +1554,30 @@ function buildCandleCharts(container, series) {
     { chart: rsiChart, el: rsiWrap },
     { chart: macdChart, el: macdWrap },
   );
+
+  // ── trackpad pinch-to-zoom (TradingView-style), independent of plain scroll ──
+  // A ctrl+wheel event only ever comes from a trackpad pinch gesture (or the
+  // ctrl+scroll-to-zoom keyboard convention) — real two-finger scrolling never
+  // sets ctrlKey. So: ctrlKey → zoom the chart (and preventDefault, since the
+  // browser's own reflex for ctrl+wheel is to zoom the *page*); no ctrlKey →
+  // do nothing and let the event fall through to the page's normal scroll.
+  function attachPinchZoom(chart, el) {
+    el.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const ts = chart.timeScale();
+      const range = ts.getVisibleLogicalRange();
+      if (!range) return;
+      const span = range.to - range.from;
+      const zoomFactor = e.deltaY < 0 ? 0.88 : 1 / 0.88;   // pinch-out (deltaY<0) = zoom in
+      const newSpan = Math.max(span * zoomFactor, 4);       // don't zoom in past ~4 bars
+      const center = range.from + span / 2;
+      ts.setVisibleLogicalRange({ from: center - newSpan / 2, to: center + newSpan / 2 });
+    }, { passive: false });
+  }
+  attachPinchZoom(priceChart, priceWrap);
+  attachPinchZoom(rsiChart, rsiWrap);
+  attachPinchZoom(macdChart, macdWrap);
 
   // ── indicator controller ──
   const state = {
