@@ -82,6 +82,34 @@ A full run is ~40–90s (EDGAR is the slow leg; Gemini is one call).
 
 Dashboard guidance lives in `app/static/CLAUDE.md` (loads when working under that dir).
 
+## Deploying to Vercel
+
+`api/index.py` re-exports the exact same `app.main:app` FastAPI instance used locally —
+it's a thin entrypoint, not a fork, so local dev (`uvicorn app.main:app --reload`) is
+unaffected by it. `vercel.json` rewrites every path to that one function (the dashboard's
+`GET /` route already serves the static HTML itself, so there's no separate static build).
+
+**Set these in the Vercel dashboard's Environment Variables** (same names as the `.env`
+table above): `GEMINI_API_KEY` (required), `TAVILY_API_KEY` (recommended), and optionally
+`SEC_EDGAR_USER_AGENT` / `DECISION_MODEL` / `DECISION_MAX_TOKENS`. No code path reads a
+`.env` file in production — `load_dotenv()` in `app/__init__.py` is a no-op when one isn't
+present, which is the normal case on Vercel.
+
+**Known constraint — function duration.** A full `/analyze` run takes ~40–90s; Vercel
+serverless functions have a hard execution-time ceiling that depends on plan (Hobby's is
+well under that even at its `maxDuration` max, which is what `vercel.json` is currently
+set to). In practice on Hobby:
+- `/api/quote` and single-ticker `/analyze/quantitative` calls are fast and fine as-is.
+- A full `/analyze` against the **default 11-ticker basket will very likely time out
+  (504)** — Agent 1 and Agent 2 both loop over tickers *sequentially* per network call.
+  For a reliable production request, send a short ticker list (1–3 symbols) from the
+  dashboard's watchlist rather than running the full default basket.
+- If full-basket runs need to be reliable, the real fix is restructuring `/analyze` into
+  a background job the frontend polls for status (immune to function timeouts, but needs
+  somewhere to persist job state between invocations — e.g. a small Postgres/Redis, the
+  pattern the sibling `desktop-hardware-research-agent` project uses with Neon + SSE) —
+  not yet done here; raising `maxDuration` was the deliberately chosen first step.
+
 ## Architecture
 
 **Shared state.** `app/state.py` defines `StockAnalysisState` (Pydantic), the single

@@ -1,0 +1,12 @@
+# Mirrors .gitignore — keep secrets and cache cruft out of the deploy bundle
+# regardless of how `vercel deploy` is invoked (git-linked deploys already
+# only see tracked files, but a local `vercel` CLI deploy does not).
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+
+# Not needed in the serverless bundle
+.git/
+.claude/
