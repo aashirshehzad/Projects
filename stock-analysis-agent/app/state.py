@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # Chart timeframes the pipeline understands (see `_TIMEFRAMES` in
 # app/agent_quantitative.py for the yfinance period/interval each maps to).
-Timeframe = Literal["1D", "5D", "1M", "6M", "1Y", "ALL"]
+Timeframe = Literal["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "ALL"]
 DEFAULT_TIMEFRAME: Timeframe = "6M"
 
 
@@ -263,6 +263,38 @@ class TickerSummary(BaseModel):
         ),
     )
 
+    # ── company metadata (best-effort; yfinance `.info` is slow and flaky, so
+    #    every field here can legitimately be None — never block on it) ──
+    company_name: Optional[str] = Field(
+        None, description="Company display name, e.g. 'Apple Inc.'."
+    )
+    sector: Optional[str] = Field(
+        None, description="GICS-ish sector, e.g. 'Technology'."
+    )
+    industry: Optional[str] = Field(
+        None, description="Industry within the sector, e.g. 'Consumer Electronics'."
+    )
+    market_cap: Optional[float] = Field(
+        None, description="Market capitalization in USD."
+    )
+    week52_high: Optional[float] = Field(
+        None, description="52-week high price."
+    )
+    week52_low: Optional[float] = Field(
+        None, description="52-week low price."
+    )
+
+    @field_validator("market_cap", "week52_high", "week52_low", mode="before")
+    @classmethod
+    def _meta_nan_to_none(cls, v):
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
 
 class TickerError(BaseModel):
     """A ticker that an agent could not process, with the reason why."""
@@ -380,6 +412,14 @@ class Scenario(BaseModel):
     invalidation_trigger: str = Field(
         ..., description="The fundamental condition that would break this case."
     )
+    investment_impact: str = Field(
+        "",
+        description=(
+            "Short, concrete portfolio-level impact if this scenario plays out, "
+            "e.g. 'Revenue growth >10% & margin expansion.' or "
+            "'Margin compression <25%.' One phrase, not a paragraph."
+        ),
+    )
 
     @field_validator("case", mode="before")
     @classmethod
@@ -399,7 +439,7 @@ class Scenario(BaseModel):
             return None
         return min(1.0, max(0.0, f))
 
-    @field_validator("drivers", "invalidation_trigger", mode="before")
+    @field_validator("drivers", "invalidation_trigger", "investment_impact", mode="before")
     @classmethod
     def _str_or_blank(cls, v):
         return "" if v is None else str(v)
@@ -419,12 +459,37 @@ class TickerReport(BaseModel):
         """Case-fold 'BUY'/'buy'/'Hold ' → the canonical literal; else 'Hold'."""
         s = str(v).strip().lower()
         return {"buy": "Buy", "sell": "Sell", "hold": "Hold"}.get(s, "Hold")
+
+    confidence: Literal["Low", "Medium", "High"] = Field(
+        "Medium",
+        description=(
+            "Self-assessed confidence in this recommendation, based on how well "
+            "the quantitative, fundamental and news signals corroborate each "
+            "other — High when they agree, Low when data is sparse or signals "
+            "conflict."
+        ),
+    )
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _confidence_normalise(cls, v):
+        s = str(v).strip().lower()
+        return {"low": "Low", "medium": "Medium", "moderate": "Medium", "high": "High"}.get(s, "Medium")
+
     executive_thesis: str = Field(
         ...,
         description=(
             "Section 1 — deep fundamental analysis: revenue drivers, moat, unit "
             "economics, balance sheet, macro/sector alignment. Plain prose, "
             "paragraphs separated by blank lines."
+        ),
+    )
+    key_insights: list[str] = Field(
+        default_factory=list,
+        description=(
+            "3-5 short, scannable bullet points distilling the thesis for a "
+            "quick read — the dashboard's 'Key Insights' tab, an alternative "
+            "view of executive_thesis, not a duplicate of downside_risks."
         ),
     )
     catalyst_timeline: list[NewsCatalyst] = Field(
@@ -438,6 +503,15 @@ class TickerReport(BaseModel):
     downside_risks: list[str] = Field(
         default_factory=list, description="Ticker-specific downside risks."
     )
+
+    @field_validator("key_insights", "downside_risks", mode="before")
+    @classmethod
+    def _str_list_or_empty(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        return [str(x) for x in v if x is not None and str(x).strip()]
 
 
 class DecisionReport(BaseModel):

@@ -57,7 +57,11 @@ _TIMEFRAMES: dict[str, dict] = {
     "1D":  {"period": "7d",  "interval": "1m", "display_bars": 390},
     "5D":  {"period": "1mo", "interval": "5m", "display_bars": 390},
     "1M":  {"period": "1y",  "interval": "1h", "display_bars": 154},
+    "3M":  {"period": "2y",  "interval": "1d", "display_bars": 63},
     "6M":  {"period": "2y",  "interval": "1d", "display_bars": 126},
+    # YTD isn't a fixed bar count — `_build_summary` slices from Jan 1 of the
+    # current year instead of using `display_bars` (see the `ytd` flag there).
+    "YTD": {"period": "2y",  "interval": "1d", "display_bars": None, "ytd": True},
     "1Y":  {"period": "5y",  "interval": "1d", "display_bars": 252},
     "ALL": {"period": "max", "interval": "1d", "display_bars": None},
 }
@@ -210,7 +214,7 @@ def _compute_rsi(close: pd.Series, period: int = _RSI_PERIOD) -> Optional[float]
 
 def _fetch_history(
     ticker: str, timeframe: str = _DEFAULT_TIMEFRAME
-) -> pd.DataFrame:
+) -> tuple[yf.Ticker, pd.DataFrame]:
     """
     Download price history for *ticker* at the resolution *timeframe* asks for
     (see ``_TIMEFRAMES``). Fetches well past the display window so the rolling
@@ -223,6 +227,9 @@ def _fetch_history(
     fine; the de-dup + drop-non-positive-OHLC filter in ``_build_summary`` is
     what protects it from bad prints (a zero / NaN row), so yfinance's own
     ``repair=`` pass — which pulls in a heavy SciPy dependency — is not used.
+
+    Returns the ``yf.Ticker`` alongside the frame so the caller can reuse the
+    same handle for :func:`_fetch_meta` instead of re-resolving the symbol.
     """
     cfg = _TIMEFRAMES.get(timeframe) or _TIMEFRAMES[_DEFAULT_TIMEFRAME]
 
@@ -230,7 +237,8 @@ def _fetch_history(
         "Fetching %s  [%s] period=%s interval=%s",
         ticker, timeframe, cfg["period"], cfg["interval"],
     )
-    df: pd.DataFrame = yf.Ticker(ticker).history(
+    stock = yf.Ticker(ticker)
+    df: pd.DataFrame = stock.history(
         period=cfg["period"],
         interval=cfg["interval"],
         auto_adjust=True,
@@ -243,11 +251,44 @@ def _fetch_history(
             "Check the symbol / timeframe."
         )
 
-    return df
+    return stock, df
+
+
+def _fetch_meta(stock: yf.Ticker) -> dict:
+    """
+    Best-effort company metadata: name, sector, industry, market cap, 52-week
+    high/low. Never raises — a slow/blocked/partial fetch just leaves fields
+    at their default ``None`` rather than failing the ticker.
+
+    ``fast_info`` (cheap, one lightweight call — the same primitive
+    ``app/quotes.py`` uses for live polling) covers the three numeric fields.
+    Name/sector/industry have no fast equivalent in yfinance; ``get_info()``
+    is a much heavier scrape, so it's wrapped separately and allowed to fail
+    on its own without taking the numeric fields down with it.
+    """
+    meta: dict = {}
+    try:
+        fi = stock.fast_info
+        meta["market_cap"] = _finite(getattr(fi, "market_cap", None))
+        meta["week52_high"] = _finite(getattr(fi, "year_high", None))
+        meta["week52_low"] = _finite(getattr(fi, "year_low", None))
+    except Exception:  # noqa: BLE001 - metadata is decorative, never fatal
+        logger.warning("fast_info metadata fetch failed for %s", stock.ticker, exc_info=True)
+    try:
+        info = stock.get_info() or {}
+        meta["company_name"] = info.get("longName") or info.get("shortName")
+        meta["sector"] = info.get("sector")
+        meta["industry"] = info.get("industry")
+    except Exception:  # noqa: BLE001 - the slow scrape; degrade, don't fail
+        logger.warning("get_info() metadata fetch failed for %s", stock.ticker, exc_info=True)
+    return meta
 
 
 def _build_summary(
-    ticker: str, df: pd.DataFrame, timeframe: str = _DEFAULT_TIMEFRAME
+    ticker: str,
+    df: pd.DataFrame,
+    timeframe: str = _DEFAULT_TIMEFRAME,
+    meta: Optional[dict] = None,
 ) -> TickerSummary:
     """
     Derive quantitative metrics from a price DataFrame.
@@ -302,8 +343,15 @@ def _build_summary(
     bb_last = bb_df.iloc[-1]
 
     # Restrict return / period metrics — and the emitted series — to the last
-    # `display_bars` rows (all of them for "ALL").
-    window = df if display_bars is None else df.iloc[-display_bars:]
+    # `display_bars` rows (all of them for "ALL"). YTD isn't a bar count: slice
+    # from Jan 1 of the current year in the series' own index tz instead.
+    if cfg.get("ytd"):
+        year_start = pd.Timestamp(year=df.index.max().year, month=1, day=1, tz=df.index.tz)
+        window = df.loc[df.index >= year_start]
+        if window.empty:  # e.g. first trading day of the year, before the open
+            window = df.iloc[-1:]
+    else:
+        window = df if display_bars is None else df.iloc[-display_bars:]
 
     # A candlestick needs all four OHLC values that are also *positive*; yfinance
     # yields NaN rows around holidays and, briefly, for the current bar, and a
@@ -375,6 +423,7 @@ def _build_summary(
         ),
         data_points=len(window),
         price_history=price_history,
+        **(meta or {}),
     )
 
 
@@ -401,8 +450,9 @@ def quantitative_agent(state: StockAnalysisState) -> StockAnalysisState:
 
     for ticker in state.tickers:
         try:
-            df = _fetch_history(ticker, timeframe)
-            summary = _build_summary(ticker, df, timeframe)
+            stock, df = _fetch_history(ticker, timeframe)
+            meta = _fetch_meta(stock)
+            summary = _build_summary(ticker, df, timeframe, meta)
             summaries.append(summary)
             logger.info("✓  %s — return %.2f%%", ticker, summary.pct_return)
         except Exception as exc:  # noqa: BLE001 – isolate per-ticker failures
