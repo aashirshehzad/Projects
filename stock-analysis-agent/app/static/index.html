@@ -400,10 +400,17 @@
   }
 
   /* ═══ AI INSIGHT GRID ═══ */
-  .insights-grid { display: grid; grid-template-columns: 1fr; gap: var(--s-3); margin-top: var(--s-4); }
+  /* Sits inside .ws-controls, directly under the indicator pills — its own
+     top border makes it read as a distinct "results" section of that card
+     rather than a random gap, and it collapses to nothing (:empty) when no
+     indicator is toggled on. */
+  .insights-grid {
+    display: grid; grid-template-columns: 1fr; gap: var(--s-3);
+    margin-top: 2px; padding-top: var(--s-3); border-top: 1px solid var(--border);
+  }
   @media (min-width: 780px)  { .insights-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (min-width: 1280px) { .insights-grid { grid-template-columns: repeat(3, 1fr); } }
-  .insights-grid:empty { display: none; }
+  .insights-grid:empty { display: none; margin-top: 0; padding-top: 0; border-top: 0; }
   .insight-card {
     display: flex; flex-direction: column; min-height: 128px;
     padding: 13px 15px; border-radius: var(--r);
@@ -531,9 +538,9 @@
         <span class="ws-controls-label">Indicators</span>
         <div id="ws-indicator-bar"></div>
       </div>
+      <div id="ws-indicators"></div>
     </div>
     <div id="ws-chart" class="chart-slot"></div>
-    <div id="ws-indicators"></div>
   </section>
 
   <aside class="panel panel-right">
