@@ -22,10 +22,14 @@ stock tickers. Four agents; the first three run in parallel.
   `response_schema=_LlmDecision`) plus an internal reflection/critic step, and writes
   `StockAnalysisState.final_decision` — a `DecisionReport` (typed model in `state.py`)
   holding one `TickerReport` per symbol: `recommendation` (`Buy`/`Sell`/`Hold`),
-  `executive_thesis` prose, a dated `catalyst_timeline` (`NewsCatalyst[]`), a
-  bull/base/bear `scenarios` matrix (`Scenario[]` with `invalidation_trigger`),
-  `downside_risks`, plus basket-level `cross_cutting_risks`, `critic_notes` and
-  `model`/`generated_at`/`raw_response`. Needs the `google-genai` package and
+  a `confidence` (`Low`/`Medium`/`High`) self-assessment, `executive_thesis`
+  prose, `key_insights` bullets, a dated `catalyst_timeline` (`NewsCatalyst[]`), a
+  bull/base/bear `scenarios` matrix (`Scenario[]` with `invalidation_trigger` and
+  a short `investment_impact` phrase), `downside_risks`, plus basket-level
+  `cross_cutting_risks`, `critic_notes` and `model`/`generated_at`/`raw_response`.
+  The prompt also folds in ATR (breakout volatility check), Stochastic %K/%D at
+  the 80/20 boundaries, and active FVG zones as support/target prices. Needs the
+  `google-genai` package and
   `GEMINI_API_KEY` (or `GOOGLE_API_KEY`); without either — or on an API/parse error — it
   degrades to one `Hold` `TickerReport` per ticker with an `error` note, never raising.
   `DECISION_CRITIC_PASSES` (0–2) adds explicit "audit your draft" round-trips.
@@ -147,12 +151,19 @@ surfaces `failed_tickers` **or** a `final_decision.error` as `status: "partial_s
 are therefore declared `def`, not `async def`, so FastAPI runs them in a worker threadpool
 instead of stalling the event loop. Keep new analysis routes sync.
 
-**Agent 1 detail.** Fetches a 6-month analysis window *plus* ~300 extra calendar days of
-look-back. Moving averages (50/200-day) and the 14-day Wilder RSI are computed on the full
-series; return, period dates, `data_points`, and the emitted `price_history` (per-day
-OHLC + MA-50 + MA-200 + RSI-14, which powers the dashboard's candlestick and RSI charts)
-all come from the trailing 6-month slice only. `_rsi_series()` returns the whole RSI
-series; `_compute_rsi()` is the thin scalar wrapper for `TickerSummary.rsi_14`.
+**Agent 1 detail.** Fetches a window per the requested timeframe (`_TIMEFRAMES`
+maps each to a yfinance period/interval), always with generous extra look-back so
+the 200-bar averages are warm at the window start. Every indicator — SMA-50/200,
+EMA-9/20, 14-bar Wilder RSI, MACD (12/26/9), Bollinger Bands (SMA-20 ± 2σ),
+ATR-14, and the Stochastic Oscillator (%K 14 / %D 3) — is computed on the full
+series; return, period dates, `data_points`, the emitted `price_history` (per-bar
+OHLCV + every indicator above) and the `fvg_zones` array (3-candle Fair Value
+Gaps, filtered to unmitigated ones) all come from the trailing display slice
+only. Best-effort company metadata (name / sector / industry from `get_info()`,
+market cap / 52-week range from `fast_info`) is merged in and any field may be
+`None`. `_rsi_series()` / `_atr_series()` / `_stoch_frame()` return whole series;
+the `*_last` / `_compute_rsi()` values are the thin scalar wrappers for the
+`TickerSummary` snapshot fields.
 
 **Agent 2 detail.** `extract_financial_highlights(text)` regex-scrapes revenue, net income,
 and forward-guidance prose from stripped filing HTML (best-effort, scaled by an

@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   /* ═══════════════════════════════════════════════════════════════════════
@@ -547,15 +546,6 @@
   }
   .failed { color: var(--sell); font-size: 12px; margin: 4px 0; }
 
-  .card h3 {
-    margin: var(--s-5) 0 var(--s-2); font-size: 10px; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .report h3:first-of-type { margin-top: var(--s-3); }
-  .thesis-prose p { margin: var(--s-2) 0; font-size: 12.5px; line-height: 1.65; color: var(--ink-dim); }
-  .chart-wrap { position: relative; height: 300px; }
-  .chart-wrap.short { height: 220px; }
-
   /* ═══ HEADER · SEARCH (decorative chrome) ═══ */
   .head-search {
     display: none; align-items: center; gap: 8px;
@@ -864,7 +854,6 @@
 
 <script>
 const $ = (sel) => document.querySelector(sel);
-const charts = [];      // Chart.js instances
 const lwCharts = [];     // { chart, el } for lightweight-charts instances
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString(undefined, { style: "currency", currency: "USD" });
 const fmtPct = (v) => v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
@@ -900,7 +889,6 @@ function cssVar(name) {
 }
 
 function destroyCharts() {
-  while (charts.length) charts.pop().destroy();
   while (lwCharts.length) {
     const item = lwCharts.pop();
     try { item.ro && item.ro.disconnect(); } catch (_) { /* no observer */ }
@@ -916,22 +904,62 @@ function setStatus(msg, isError = false) {
   el.classList.toggle("error", isError);
 }
 
+// ── persisted state (localStorage) ─────────────────────────────────────────
+// One JSON blob so a private window / blocked storage just yields defaults.
+// The heavy per-ticker price history is NOT persisted — it re-fetches per
+// ticker on selection; only the watchlist, the active selection/timeframe and
+// the last Agent 3 run (decision + fundamental + news) are kept.
+const STORE_KEY = "stock-terminal:v1";
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch (_) { return {}; }
+}
+function saveStore(patch) {
+  try {
+    const next = { ...loadStore(), ...patch };
+    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  } catch (_) { /* private mode / quota / disabled — ignore */ }
+}
+function persistWatchlist() {
+  saveStore({ watchlist: appState.tickers, active: appState.active });
+}
+function persistView() {
+  saveStore({ active: appState.active, timeframe: appState.timeframe });
+}
+function persistLastRun() {
+  saveStore({
+    lastRun: {
+      decision: appState.decision,
+      fundamental: appState.fundamental,
+      news: appState.news,
+      ranAt: new Date().toISOString(),
+    },
+  });
+}
+
 // ── terminal state ─────────────────────────────────────────────────────────
 const DEFAULT_WATCHLIST = [
   "AAPL", "NVDA", "MSFT", "TSLA", "SMCI",
   "AMD", "MRNA", "WOLF", "ASTS", "MARA", "CVNA",
 ];
+const _stored = loadStore();
+const _storedList = Array.isArray(_stored.watchlist) && _stored.watchlist.length
+  ? _stored.watchlist.filter((s) => typeof s === "string" && /^[A-Z][A-Z.\-]{0,9}$/.test(s))
+  : null;
 const appState = {
-  tickers: [...DEFAULT_WATCHLIST],   // watchlist symbols
-  active: DEFAULT_WATCHLIST[0],      // selected ticker
-  timeframe: "6M",
+  tickers: _storedList || [...DEFAULT_WATCHLIST],   // watchlist symbols
+  active: null,                     // set just below
+  timeframe: typeof _stored.timeframe === "string" ? _stored.timeframe : "6M",
   summaries: {},                     // sym -> TickerSummary (Agent 1)
   quotes: {},                        // sym -> { price, change_pct, ... }
-  news: {},                          // sym -> TickerNews
-  decision: null,                    // DecisionReport (Agent 3)
-  fundamental: null,
+  news: (_stored.lastRun && _stored.lastRun.news) || {},   // sym -> TickerNews
+  decision: (_stored.lastRun && _stored.lastRun.decision) || null,  // DecisionReport (Agent 3)
+  fundamental: (_stored.lastRun && _stored.lastRun.fundamental) || null,
+  lastRunAt: (_stored.lastRun && _stored.lastRun.ranAt) || null,
   chart: null,                       // active chart controller
 };
+appState.active = appState.tickers.includes(_stored.active) ? _stored.active : appState.tickers[0];
 
 // ── left panel: watchlist ──────────────────────────────────────────────────
 function renderWatchlist() {
@@ -965,6 +993,7 @@ function renderWatchlist() {
 async function selectTicker(sym) {
   if (!sym) return;
   appState.active = sym;
+  persistView();
   renderWatchlist();
   renderAgent3();
   await renderWorkspace();
@@ -1043,6 +1072,7 @@ function toggleWatchlist(sym) {
   } else {
     appState.tickers.unshift(sym);
   }
+  persistWatchlist();
   renderWatchlist();
   renderTickerHeader();
 }
@@ -1109,7 +1139,7 @@ function renderTickerHeader() {
   if (wlBtn) wlBtn.addEventListener("click", () => toggleWatchlist(sym));
   const repBtn = $("#tk-report-btn");
   if (repBtn) repBtn.addEventListener("click", generateReportForActive);
-  // If the brand logo 404s (no Clearbit coverage), drop it and let the
+  // If the CDN has no logo for this symbol, drop the <img> and let the
   // generated letter avatar underneath show through.
   const logoImg = host.querySelector(".tk-logo");
   if (logoImg) logoImg.addEventListener("error", () => logoImg.remove());
@@ -1160,7 +1190,9 @@ async function generateReportForActive() {
     if (st.fundamental_report) appState.fundamental = st.fundamental_report;
     (st.failed_tickers || []).forEach((f) => console.warn(`[report] ${f.ticker}: ${f.error}`));
 
+    appState.lastRunAt = new Date().toISOString();
     setFooterUpdated();
+    persistLastRun();
     setStatus(`Report ready for ${sym}.`);
     finishReportProgress();
     renderAgent3();
@@ -1175,9 +1207,14 @@ async function generateReportForActive() {
   }
 }
 
-function setFooterUpdated() {
+// Footer stamp. With an argument (ISO string) it renders that moment as a
+// date+time (used on load to show when the persisted run happened); with no
+// argument it stamps "now" as a time (used right after a fresh run).
+function setFooterUpdated(iso) {
   const el = $("#footer-updated");
-  if (el) el.textContent = "Last updated " + new Date().toLocaleTimeString();
+  if (!el) return;
+  const d = iso ? new Date(iso) : new Date();
+  el.textContent = "Last updated " + (iso ? d.toLocaleString() : d.toLocaleTimeString());
 }
 
 // ── right panel: Agent 3 intelligence ─────────────────────────────────────
@@ -1369,7 +1406,9 @@ async function runFullAnalysis() {
 
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     setStatus(`Done in ${secs}s · ${data.status}`);
+    appState.lastRunAt = new Date().toISOString();
     setFooterUpdated();
+    persistLastRun();
     finishReportProgress();
     renderWatchlist();
     renderAgent3();
@@ -1385,40 +1424,6 @@ async function runFullAnalysis() {
 }
 
 const CASE_LABEL = { bull: "Bull", base: "Base", bear: "Bear" };
-
-function reportCard(r) {
-  const c = card("");
-  c.className = "card report";
-  const rec = r.recommendation || "Hold";
-  c.innerHTML = `
-    <div class="verdict">
-      <span class="badge ${esc(rec)}">${esc(rec)}</span>
-      <h2 style="margin:0">${esc(r.ticker)}</h2>
-    </div>
-
-    <h3>Executive thesis &amp; valuation drivers</h3>
-    <div class="thesis-prose">${
-      String(r.executive_thesis || "")
-        .split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`).join("")
-    }</div>
-
-    <h3>Timeline of dated news catalysts &amp; price impact</h3>
-    ${
-      (r.catalyst_timeline || []).length
-        ? `<ul class="timeline">${(r.catalyst_timeline || []).map(catalystRow).join("")}</ul>`
-        : `<p class="hint">No dated catalysts available for this ticker.</p>`
-    }
-
-    <h3>Scenario matrix &amp; downside risks</h3>
-    ${scenarioTable(r.scenarios || [])}
-    ${
-      (r.downside_risks || []).length
-        ? `<ul class="risks">${(r.downside_risks || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`
-        : ""
-    }
-  `;
-  return c;
-}
 
 function catalystRow(k) {
   const src = k.source
@@ -1501,56 +1506,6 @@ function card(title) {
   return c;
 }
 
-function metricsCard(hist) {
-  const c = card("Quantitative metrics");
-  const rows = hist.map((h) => `
-    <tr>
-      <td>${esc(h.ticker)}</td>
-      <td>${fmtUSD(h.latest_close)}</td>
-      <td class="${h.pct_return >= 0 ? "pos" : "neg"}">${fmtPct(h.pct_return)}</td>
-      <td>${fmtUSD(h.moving_averages?.ma_50)}</td>
-      <td>${fmtUSD(h.moving_averages?.ma_200)}</td>
-      <td>${fmtRSI(h.rsi_14)}</td>
-      <td>${h.data_points}</td>
-      <td>${esc(h.period_start)} → ${esc(h.period_end)}</td>
-    </tr>`).join("");
-  c.innerHTML += `
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th>Ticker</th><th>Last close</th><th>6-mo return</th>
-          <th>MA-50</th><th>MA-200</th><th>RSI-14</th><th>Days</th><th>Window</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-  return c;
-}
-
-function returnsCard(hist) {
-  const c = card("6-month return");
-  const wrap = document.createElement("div");
-  wrap.className = "chart-wrap short";
-  const canvas = document.createElement("canvas");
-  wrap.appendChild(canvas);
-  c.appendChild(wrap);
-  const buy = cssVar("--buy"), sell = cssVar("--sell");
-  charts.push(new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels: hist.map((h) => h.ticker),
-      datasets: [{
-        label: "Return %",
-        data: hist.map((h) => h.pct_return),
-        backgroundColor: hist.map((h) => (h.pct_return >= 0 ? buy : sell)),
-        borderRadius: 4,
-      }],
-    },
-    options: baseOpts({ yTitle: "%" }),
-  }));
-  return c;
-}
-
 const TIMEFRAMES = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "ALL"];
 
 // [1D … ALL] selector for the active ticker. Switching sets appState.timeframe
@@ -1569,6 +1524,7 @@ function timeframeBar() {
     b.addEventListener("click", () => {
       if (tf === appState.timeframe) return;
       appState.timeframe = tf;
+      persistView();
       console.log(`[timeframe] ${appState.active} -> ${tf}`);
       renderWorkspace();
     });
@@ -2546,24 +2502,6 @@ function buildCandleCharts(container, series, fvgZones = []) {
   return { state, setIndicator, updateLastPrice, destroy, chart: priceChart };
 }
 
-function baseOpts({ yTitle, xTicks = 6 } = {}) {
-  const grid = cssVar("--border"), muted = cssVar("--muted");
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-    plugins: { legend: { labels: { color: muted, boxWidth: 12 } } },
-    scales: {
-      x: { grid: { color: grid }, ticks: { color: muted, maxTicksLimit: xTicks, autoSkip: true } },
-      y: {
-        grid: { color: grid },
-        ticks: { color: muted },
-        title: yTitle ? { display: true, text: yTitle, color: muted } : undefined,
-      },
-    },
-  };
-}
-
 function rawDetails(summary, text) {
   const d = document.createElement("details");
   d.innerHTML = `<summary>${esc(summary)}</summary><pre>${esc(text)}</pre>`;
@@ -2720,7 +2658,7 @@ function wireHeaderSearch() {
     if (e.key !== "Enter") return;
     const sym = e.target.value.trim().toUpperCase();
     if (!sym || !/^[A-Z][A-Z.\-]{0,9}$/.test(sym)) return;
-    if (!appState.tickers.includes(sym)) appState.tickers.unshift(sym);
+    if (!appState.tickers.includes(sym)) { appState.tickers.unshift(sym); persistWatchlist(); }
     e.target.value = "";
     selectTicker(sym);
   });
@@ -2734,6 +2672,7 @@ $("#ticker-search").addEventListener("keydown", (e) => {
   const sym = e.target.value.trim().toUpperCase();
   if (sym && /^[A-Z][A-Z.\-]{0,9}$/.test(sym) && !appState.tickers.includes(sym)) {
     appState.tickers.unshift(sym);
+    persistWatchlist();
     e.target.value = "";
     selectTicker(sym);
   } else if (sym && appState.tickers.includes(sym)) {
@@ -2745,6 +2684,7 @@ $("#ticker-search").addEventListener("keydown", (e) => {
 wireChartToolbar();
 wireChartModal();
 wireHeaderSearch();
+if (appState.lastRunAt) setFooterUpdated(appState.lastRunAt);   // restored from a previous session
 renderWatchlist();
 renderAgent3();
 renderWorkspace();
