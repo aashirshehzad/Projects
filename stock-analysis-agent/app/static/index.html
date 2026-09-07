@@ -138,11 +138,13 @@
     margin: 0; font-size: 14.5px; font-weight: 800; letter-spacing: .1em;
     display: flex; align-items: center; gap: 10px; color: var(--ink);
   }
-  header h1::before {
-    content: ""; width: 20px; height: 20px; border-radius: var(--r-xs);
+  .brand-mark {
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: var(--r-xs);
+    display: flex; align-items: center; justify-content: center;
     background: linear-gradient(135deg, var(--accent), var(--c-ema) 130%);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, .08) inset, 0 4px 14px -2px var(--accent-glow);
   }
+  .brand-mark svg { width: 14px; height: 14px; display: block; }
   .head-tagline {
     color: var(--muted); font-size: 11.5px; font-weight: 500;
     padding-left: 18px; border-left: 1px solid var(--border);
@@ -221,10 +223,21 @@
     box-shadow: var(--sh-sm);
   }
   .wl-row.active::before { height: 22px; }
-  .wl-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .wl-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .wl-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
   .wl-dot.pos { background: var(--buy); box-shadow: 0 0 6px var(--pos-soft); }
   .wl-dot.neg { background: var(--sell); box-shadow: 0 0 6px var(--neg-soft); }
+  .wl-logo {
+    position: relative; flex: 0 0 auto;
+    width: 20px; height: 20px; border-radius: var(--r-xs); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--c-ema) 130%);
+    font: 800 9px/1 var(--font-sans); color: #fff;
+  }
+  .wl-logo img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; padding: 2px; background: #fff;
+  }
   .wl-sym { font-weight: 700; font-size: 13px; letter-spacing: .02em; }
   .wl-chg {
     font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: var(--r-xs);
@@ -754,7 +767,12 @@
 <body>
 <header>
   <div class="head-row">
-    <h1>STOCK TERMINAL</h1>
+    <h1>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="#fff"><rect x="3" y="12" width="4" height="8" rx="1.2"/><rect x="10" y="7" width="4" height="13" rx="1.2"/><rect x="17" y="3" width="4" height="17" rx="1.2"/></svg>
+      </span>
+      STOCK TERMINAL
+    </h1>
     <span class="head-tagline">Multi-agent equity research</span>
     <label class="head-search">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -931,10 +949,14 @@ function renderWatchlist() {
       const chg = q && q.change_pct != null ? q.change_pct : null;
       const cls = chg == null ? "flat" : chg >= 0 ? "pos" : "neg";
       const dotCls = chg == null ? "" : chg >= 0 ? "pos" : "neg";
+      const logoUrl = logoFor(sym);
       li.innerHTML =
         `<span class="wl-main"><span class="wl-dot ${dotCls}"></span>` +
+        `<span class="wl-logo">${logoUrl ? `<img src="${esc(logoUrl)}" alt="" />` : ""}<span>${esc(sym.slice(0, 1))}</span></span>` +
         `<span class="wl-sym num">${esc(sym)}</span></span>` +
         `<span class="wl-chg num ${cls}">${chg == null ? "—" : fmtPct(chg)}</span>`;
+      const logoImg = li.querySelector(".wl-logo img");
+      if (logoImg) logoImg.addEventListener("error", () => logoImg.remove());
       li.addEventListener("click", () => selectTicker(sym));
       ul.appendChild(li);
     });
