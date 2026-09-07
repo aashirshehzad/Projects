@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    image: stock-analysis-agent:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env            # GEMINI_API_KEY (required), TAVILY_API_KEY, SEC_EDGAR_USER_AGENT
+    restart: unless-stopped
+    # ── Uncomment on the 1 GB EC2 t3.micro so a runaway full-basket /analyze
+    #    can't take the whole host down. Leave commented while testing locally
+    #    (an unexpected OOM kill mid-run is just confusing on a dev machine).
+    # mem_limit: 950m
+    # mem_reservation: 384m

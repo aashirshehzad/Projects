@@ -1,0 +1,28 @@
+# Secrets never enter the image (compose passes them at runtime via env_file).
+.env
+.env.*
+!.env.example
+
+# VCS / tooling / editor
+.git
+.gitignore
+.vscode
+.claude
+.vercel
+.vercelignore
+
+# Python cruft
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv
+venv
+
+# Not needed at runtime
+**/*.md
+api/
+vercel.json
+Dockerfile
+docker-compose.yml
+.dockerignore
+DEPLOY.md
