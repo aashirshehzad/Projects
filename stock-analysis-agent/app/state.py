@@ -173,6 +173,35 @@ class FvgZone(BaseModel):
         return s if s in ("bullish", "bearish") else "bullish"
 
 
+class FibonacciLevels(BaseModel):
+    """
+    Fibonacci retracement price levels for the current window, anchored to the
+    swing low (``fib_0``) and swing high (``fib_1``) of the last 60 bars.
+    Each intermediate level is ``low + ratio · (high − low)``.
+    """
+
+    fib_0: Optional[float] = Field(None, description="0% — the swing low.")
+    fib_0_236: Optional[float] = Field(None, description="23.6% retracement level.")
+    fib_0_382: Optional[float] = Field(None, description="38.2% retracement level.")
+    fib_0_5: Optional[float] = Field(None, description="50% retracement level.")
+    fib_0_618: Optional[float] = Field(
+        None, description="61.8% — the golden ratio; the most-watched level."
+    )
+    fib_0_786: Optional[float] = Field(None, description="78.6% retracement level.")
+    fib_1: Optional[float] = Field(None, description="100% — the swing high.")
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _nan_to_none(cls, v):
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
+
 class PricePoint(BaseModel):
     """
     One trading day inside the analysis window: the full OHLC bar, share
@@ -350,6 +379,13 @@ class TickerSummary(BaseModel):
             "Active (unmitigated) 3-candle Fair Value Gaps in the window, "
             "newest first — magnetic liquidity zones that act as support / "
             "resistance targets."
+        ),
+    )
+    fibonacci_levels: Optional[FibonacciLevels] = Field(
+        None,
+        description=(
+            "Fibonacci retracement price levels (0 / 23.6 / 38.2 / 50 / 61.8 / "
+            "78.6 / 100 %) anchored to the last 60 bars' swing low and high."
         ),
     )
     data_points: int = Field(

@@ -148,6 +148,18 @@ _SYSTEM_PROMPT = (
     "concrete support or upside target (name the actual bottom–top prices), not "
     "a round-number guess. If no FVG is active for a ticker, say so rather than "
     "inventing one.\n"
+    "1e. Fibonacci retracements. The inputs give the 60-bar swing high/low and "
+    "the 23.6 / 38.2 / 50 / 61.8 / 78.6 % retracement prices, plus which level "
+    "the current price sits nearest. Judge the current price's PROXIMITY to the "
+    "38.2 %, 50 % and 61.8 % levels specifically — these three are the "
+    "highest-probability reaction zones. When price is at or just above one of "
+    "them, treat that level as a probable bounce / support target; when price is "
+    "at or just below one, treat it as a probable rejection / resistance zone. "
+    "In the BASE and BULL scenarios name the actual 38.2 / 50 / 61.8 % prices as "
+    "the support-to-hold and the upside target rather than inventing round "
+    "numbers, and cross-check them against the nearest FVG and moving "
+    "averages — call out when Fib and another level CONFLUENCE at the same "
+    "price (a stronger zone) versus when they disagree.\n"
     "1b. High-beta price action: for volatile, high-beta names (e.g. TSLA, SMCI) "
     "the tape is driven as much by structure as by fundamentals. When you judge "
     "a Bollinger Band breakout or an RSI divergence, actively look for aggressive "
@@ -202,8 +214,9 @@ _SYSTEM_PROMPT = (
     "than the sharpest fact from each input? was ATR actually used to judge "
     "whether a Bollinger breakout is real? were the Stochastic %K/%D crossovers "
     "read against the 80/20 boundaries, not the middle? do the base/bull "
-    "scenarios cite an actual active FVG price band as a target where one "
-    "exists?\n"
+    "scenarios cite an actual active FVG price band and the real 38.2/50/61.8 % "
+    "Fibonacci prices as targets where they exist, and note any Fib/FVG/MA "
+    "confluence?\n"
     "  c. Revise to fix every issue found.\n"
     "Put a short note of what the critic changed (or 'no changes needed') in "
     "critic_notes.\n"
@@ -256,9 +269,32 @@ def _format_quant_block(rows: list[TickerSummary]) -> str:
             f"ATR-14 {_fmt_price(r.atr_14)}; "
             f"Stochastic {_fmt_stoch(r.stochastic)}; "
             f"{_fmt_fvgs(r.fvg_zones)}; "
+            f"{_fmt_fib(r.fibonacci_levels, r.latest_close)}; "
             f"{r.data_points} bars"
         )
     return "\n".join(lines)
+
+
+def _fmt_fib(f, price: float | None) -> str:
+    """
+    Compact Fibonacci retracement summary plus which level the current price is
+    closest to (so Agent 3 can reason about proximity without recomputing).
+    """
+    if f is None or f.fib_0 is None or f.fib_1 is None:
+        return "Fibonacci: n/a"
+    levels = [
+        ("0%", f.fib_0), ("23.6%", f.fib_0_236), ("38.2%", f.fib_0_382),
+        ("50%", f.fib_0_5), ("61.8%", f.fib_0_618), ("78.6%", f.fib_0_786),
+        ("100%", f.fib_1),
+    ]
+    body = " / ".join(f"{name} {_fmt_price(val)}" for name, val in levels if val is not None)
+    nearest = ""
+    if price is not None:
+        got = [(name, val) for name, val in levels if val is not None]
+        if got:
+            name, val = min(got, key=lambda kv: abs(kv[1] - price))
+            nearest = f"; price {_fmt_price(price)} is nearest the {name} level ({_fmt_price(val)})"
+    return f"Fibonacci (60-bar swing): {body}{nearest}"
 
 
 def _fmt_stoch(s) -> str:

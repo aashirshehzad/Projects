@@ -1566,7 +1566,7 @@ function drawChartInto(slot, summary) {
     slot._chartController = null;
     return;
   }
-  slot._chartController = buildCandleCharts(slot, series, summary.fvg_zones || []);
+  slot._chartController = buildCandleCharts(slot, series, summary.fvg_zones || [], summary.fibonacci_levels || null);
 }
 
 // ── indicator registry ─────────────────────────────────────────────────────
@@ -1587,6 +1587,7 @@ const INDICATORS = [
   { key: "ema_9",  label: "EMA-9",  insightName: "9-day EMA", field: "ema_9" },
   { key: "ema_20", label: "EMA-20", insightName: "20-day EMA", field: "ema_20" },
   { key: "bb",     label: "Bollinger Bands", insightName: "Bollinger Bands (SMA-20, 2σ)" },
+  { key: "fib",    label: "Fibonacci", insightName: "Fibonacci retracement levels (60-bar swing)" },
   { key: "fvg",    label: "SMC / FVG", insightName: "Fair Value Gaps (Smart Money Concepts)" },
   { key: "vol",    label: "Volume", noInsight: true },
 ];
@@ -1624,6 +1625,10 @@ function latestIndicatorValue(key, series) {
   if (key === "fvg") {
     const zones = (appState.summaries[appState.active] || {}).fvg_zones || [];
     return zones.length ? { count: zones.length, zones: zones.slice(0, 4) } : null;
+  }
+  if (key === "fib") {
+    const f = (appState.summaries[appState.active] || {}).fibonacci_levels;
+    return f && f.fib_0 != null && f.fib_1 != null ? f : null;
   }
   const desc = ALL_INDICATOR_DESCRIPTORS.find((d) => d.key === key);
   return desc && desc.field ? lastOf(desc.field) : null;
@@ -2238,7 +2243,7 @@ function technicalIndicatorsSection(ctx, insightCtl) {
 // TradingView's lightweight-charts. Returns a controller
 // { state, setIndicator(key, on), updateLastPrice, destroy }, or null when
 // the library is missing or there is nothing to draw.
-function buildCandleCharts(container, series, fvgZones = []) {
+function buildCandleCharts(container, series, fvgZones = [], fibLevels = null) {
   const LC = window.LightweightCharts;
   const priceWrap = document.createElement("div");
   priceWrap.className = "lw-wrap price";
@@ -2381,6 +2386,33 @@ function buildCandleCharts(container, series, fvgZones = []) {
   });
   bbMiddle.setData(bbMiddlePts);
 
+  // ── Fibonacci retracement price lines (opt-in via the "Fibonacci" toggle) ──
+  // Drawn with the candle series' createPriceLine so they scale with the price
+  // axis; the 50% and 61.8% (golden) levels get a distinct gold style. The
+  // handles are kept so setIndicator("fib", false) can remove them cleanly.
+  const dashStyle = LC.LineStyle ? LC.LineStyle.Dashed : 2;
+  const FIB_ROWS = fibLevels ? [
+    ["0%",    fibLevels.fib_0,     muted,  1],
+    ["23.6%", fibLevels.fib_0_236, muted,  1],
+    ["38.2%", fibLevels.fib_0_382, muted,  1],
+    ["50%",   fibLevels.fib_0_5,   "#f0c040", 1],
+    ["61.8%", fibLevels.fib_0_618, "#f0c040", 2],
+    ["78.6%", fibLevels.fib_0_786, muted,  1],
+    ["100%",  fibLevels.fib_1,     muted,  1],
+  ].filter((r) => r[1] != null) : [];
+  let fibLines = [];
+  function drawFib() {
+    fibLines.forEach((pl) => { try { candle.removePriceLine(pl); } catch (_) { /* gone */ } });
+    fibLines = FIB_ROWS.map(([title, price, color, width]) => candle.createPriceLine({
+      price, color, lineWidth: width, lineStyle: dashStyle,
+      axisLabelVisible: true, title: `Fib ${title}`,
+    }));
+  }
+  function clearFib() {
+    fibLines.forEach((pl) => { try { candle.removePriceLine(pl); } catch (_) { /* gone */ } });
+    fibLines = [];
+  }
+
   // legend
   priceWrap.insertAdjacentHTML("beforeend",
     `<div class="lw-legend"><b class="k-close">Candles</b>` +
@@ -2454,6 +2486,7 @@ function buildCandleCharts(container, series, fvgZones = []) {
     bb: bbUpperPts.length > 0,
     vol: volPts.length > 0,
     fvg: false,   // SMC overlay is opt-in
+    fib: false,   // Fibonacci lines are opt-in
   };
 
   function setIndicator(key, on) {
@@ -2468,6 +2501,7 @@ function buildCandleCharts(container, series, fvgZones = []) {
     }
     else if (key === "vol") volume.applyOptions({ visible: on });
     else if (key === "fvg") { fvgLayer.hidden = !on; renderFvg(); }
+    else if (key === "fib") { on ? drawFib() : clearFib(); }
     else {
       console.warn(`[chart] unknown indicator key: ${key}`);
       return;

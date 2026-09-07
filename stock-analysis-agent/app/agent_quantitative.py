@@ -36,6 +36,7 @@ import yfinance as yf
 from app.state import (
     MACD,
     BollingerBands,
+    FibonacciLevels,
     FvgZone,
     MovingAverages,
     PricePoint,
@@ -89,6 +90,10 @@ _STOCH_K_PERIOD, _STOCH_D_PERIOD = 14, 3
 
 # Cap on how many active Fair Value Gaps to emit per ticker (newest first).
 _MAX_FVG_ZONES = 12
+
+# Look-back for the Fibonacci swing high / low, and the retracement ratios.
+_FIB_WINDOW = 60
+_FIB_RATIOS = (0.236, 0.382, 0.5, 0.618, 0.786)
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -316,6 +321,27 @@ def _detect_fvgs(
     zones.reverse()
     return zones[:max_zones]
 
+
+def _fibonacci_levels(window: pd.DataFrame, look_back: int = _FIB_WINDOW) -> FibonacciLevels:
+    """
+    Fibonacci retracement levels for the last *look_back* bars of the display
+    *window*: 0 % anchored at the swing low, 100 % at the swing high, each
+    intermediate ratio at ``low + ratio · (high − low)``. Returns an all-``None``
+    ``FibonacciLevels`` if the range is degenerate (halted / single-price name).
+    """
+    tail = window.tail(look_back)
+    low = _finite(tail["Low"].min())
+    high = _finite(tail["High"].max())
+    if low is None or high is None or high <= low:
+        return FibonacciLevels()
+
+    span = high - low
+    fields = {"fib_0": low, "fib_1": high}
+    for ratio in _FIB_RATIOS:
+        key = "fib_" + f"{ratio:.3f}".rstrip("0").replace(".", "_")
+        fields[key] = _round(low + ratio * span)
+    return FibonacciLevels(**fields)
+
 def _fetch_history(
     ticker: str, timeframe: str = _DEFAULT_TIMEFRAME
 ) -> tuple[yf.Ticker, pd.DataFrame]:
@@ -510,6 +536,7 @@ def _build_summary(
     ]
 
     fvg_zones = _detect_fvgs(window, _fmt_ts)
+    fibonacci_levels = _fibonacci_levels(window)
 
     return TickerSummary(
         ticker=ticker,
@@ -542,6 +569,7 @@ def _build_summary(
             stoch_d=_round(stoch_last["stoch_d"], 2),
         ),
         fvg_zones=fvg_zones,
+        fibonacci_levels=fibonacci_levels,
         data_points=len(window),
         price_history=price_history,
         **(meta or {}),
