@@ -36,8 +36,10 @@ import yfinance as yf
 from app.state import (
     MACD,
     BollingerBands,
+    FvgZone,
     MovingAverages,
     PricePoint,
+    Stochastic,
     StockAnalysisState,
     TickerError,
     TickerSummary,
@@ -80,6 +82,13 @@ _MACD_FAST, _MACD_SLOW, _MACD_SIGNAL = 12, 26, 9
 
 # Bollinger Bands: 20-period SMA middle band, ±2 rolling standard deviations.
 _BB_WINDOW, _BB_STD = 20, 2.0
+
+# ATR look-back and Stochastic Oscillator periods (%K look-back, %D smoothing).
+_ATR_PERIOD = 14
+_STOCH_K_PERIOD, _STOCH_D_PERIOD = 14, 3
+
+# Cap on how many active Fair Value Gaps to emit per ticker (newest first).
+_MAX_FVG_ZONES = 12
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -212,6 +221,101 @@ def _compute_rsi(close: pd.Series, period: int = _RSI_PERIOD) -> Optional[float]
 
     return _round(_rsi_series(close, period).iloc[-1], 2)
 
+
+def _atr_series(df: pd.DataFrame, period: int = _ATR_PERIOD) -> pd.Series:
+    """
+    Full *period*-period Average True Range for *df* (needs ``High``/``Low``/
+    ``Close`` columns).
+
+    True Range per bar = max(High − Low, |High − prev Close|, |Low − prev
+    Close|); ATR is its ``period``-bar rolling mean. The first ``period`` rows
+    are ``NaN`` (window not full) and row 0's TR uses only High − Low (no prior
+    close). All inputs are OHLC-filtered strictly-positive prices, so no
+    division and no ``inf`` is possible; ``_round`` still backstops each value.
+    """
+    high, low, close = df["High"], df["Low"], df["Close"]
+    prev_close = close.shift(1)
+    true_range = pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+    return true_range.rolling(window=period).mean()
+
+
+def _stoch_frame(
+    df: pd.DataFrame,
+    k_period: int = _STOCH_K_PERIOD,
+    d_period: int = _STOCH_D_PERIOD,
+) -> pd.DataFrame:
+    """
+    Stochastic Oscillator as a 2-column frame indexed like *df*:
+
+    * ``stoch_k`` = 100 · (Close − LowestLow(k)) / (HighestHigh(k) − LowestLow(k))
+    * ``stoch_d`` = SMA-``d_period`` of ``stoch_k``
+
+    The first ``k_period − 1`` %K rows and a further ``d_period − 1`` %D rows are
+    ``NaN``. The denominator ``HH − LL`` is zero only for a run of ``k_period``
+    identical bars (a halted/flat name); the trailing ``replace`` scrubs the
+    resulting ``inf`` and ``_round`` guards every emitted value.
+    """
+    high, low, close = df["High"], df["Low"], df["Close"]
+    lowest_low = low.rolling(window=k_period).min()
+    highest_high = high.rolling(window=k_period).max()
+    k = 100.0 * (close - lowest_low) / (highest_high - lowest_low)
+    d = k.rolling(window=d_period).mean()
+    return pd.DataFrame({"stoch_k": k, "stoch_d": d}).replace([np.inf, -np.inf], np.nan)
+
+
+def _detect_fvgs(
+    window: pd.DataFrame, fmt_ts, max_zones: int = _MAX_FVG_ZONES
+) -> list[FvgZone]:
+    """
+    3-candle Fair Value Gaps over the already-sliced display *window*.
+
+    * Bullish FVG: ``bar[i-2].High < bar[i].Low`` — the gap
+      ``[bar[i-2].High, bar[i].Low]`` was skipped on an up-thrust and sits
+      below price as support.
+    * Bearish FVG: ``bar[i-2].Low > bar[i].High`` — the gap
+      ``[bar[i].High, bar[i-2].Low]`` sits above price as resistance.
+
+    A gap is *active* only while no later bar has traded fully back through it
+    (bullish: a later Low ≤ the gap bottom; bearish: a later High ≥ the gap
+    top). Returns the newest ``max_zones`` active gaps, newest first. Every
+    zone's ``end_date`` is the window's last date so the frontend can draw the
+    box out to the right edge.
+    """
+    ohlc = window[["Open", "High", "Low", "Close"]].to_numpy(dtype=float)
+    idx = window.index
+    if len(ohlc) < 3:
+        return []
+
+    last_ts = fmt_ts(idx[-1])
+    highs, lows = ohlc[:, 1], ohlc[:, 2]
+    zones: list[FvgZone] = []
+    for i in range(2, len(ohlc)):
+        if highs[i - 2] < lows[i]:
+            top, bottom, kind = float(lows[i]), float(highs[i - 2]), "bullish"
+            mitigated = bool((lows[i + 1:] <= bottom).any())
+        elif lows[i - 2] > highs[i]:
+            top, bottom, kind = float(lows[i - 2]), float(highs[i]), "bearish"
+            mitigated = bool((highs[i + 1:] >= top).any())
+        else:
+            continue
+        if mitigated or top <= bottom:
+            continue
+        zones.append(
+            FvgZone(
+                start_date=fmt_ts(idx[i - 2]),
+                end_date=last_ts,
+                top_price=_round(top),
+                bottom_price=_round(bottom),
+                type=kind,
+            )
+        )
+
+    zones.reverse()
+    return zones[:max_zones]
+
 def _fetch_history(
     ticker: str, timeframe: str = _DEFAULT_TIMEFRAME
 ) -> tuple[yf.Ticker, pd.DataFrame]:
@@ -342,6 +446,12 @@ def _build_summary(
     bb_df = _bollinger_frame(close)
     bb_last = bb_df.iloc[-1]
 
+    # ATR-14 and the Stochastic Oscillator (%K 14 / %D 3) on the full series —
+    # both need High/Low, so they read `df` rather than just `close`.
+    atr_series = _atr_series(df)
+    stoch_df = _stoch_frame(df)
+    stoch_last = stoch_df.iloc[-1]
+
     # Restrict return / period metrics — and the emitted series — to the last
     # `display_bars` rows (all of them for "ALL"). YTD isn't a bar count: slice
     # from Jan 1 of the current year in the series' own index tz instead.
@@ -391,10 +501,15 @@ def _build_summary(
             bb_upper=_round(bb_df["bb_upper"].get(idx)),
             bb_middle=_round(bb_df["bb_middle"].get(idx)),
             bb_lower=_round(bb_df["bb_lower"].get(idx)),
+            atr=_round(atr_series.get(idx)),
+            stoch_k=_round(stoch_df["stoch_k"].get(idx), 2),
+            stoch_d=_round(stoch_df["stoch_d"].get(idx), 2),
             volume=_int(row.get("Volume")),
         )
         for idx, row in window.iterrows()
     ]
+
+    fvg_zones = _detect_fvgs(window, _fmt_ts)
 
     return TickerSummary(
         ticker=ticker,
@@ -421,6 +536,12 @@ def _build_summary(
             bb_lower=_round(bb_last["bb_lower"]),
             bandwidth=_round(bb_last["bb_bandwidth"], 4),
         ),
+        atr_14=_round(atr_series.iloc[-1]),
+        stochastic=Stochastic(
+            stoch_k=_round(stoch_last["stoch_k"], 2),
+            stoch_d=_round(stoch_last["stoch_d"], 2),
+        ),
+        fvg_zones=fvg_zones,
         data_points=len(window),
         price_history=price_history,
         **(meta or {}),

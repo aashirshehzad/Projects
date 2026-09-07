@@ -106,13 +106,81 @@ class BollingerBands(BaseModel):
         return f if math.isfinite(f) else None
 
 
+class Stochastic(BaseModel):
+    """Stochastic Oscillator (%K 14 / %D 3) snapshot at the latest close."""
+
+    stoch_k: Optional[float] = Field(
+        None,
+        description=(
+            "%K = 100 · (close − lowest-low(14)) / (highest-high(14) − "
+            "lowest-low(14)) at the latest close. >80 overbought, <20 oversold."
+        ),
+    )
+    stoch_d: Optional[float] = Field(
+        None, description="%D = 3-period SMA of %K at the latest close."
+    )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _nan_to_none(cls, v):
+        if v is None:
+            return None
+        f = float(v)
+        return f if math.isfinite(f) else None
+
+
+class FvgZone(BaseModel):
+    """
+    One active 3-candle Fair Value Gap (Smart Money Concepts): the price gap
+    left between candle *i-2* and candle *i* that candle *i-1* skipped over and
+    that later price action has not yet traded fully back through.
+    """
+
+    start_date: str = Field(..., description="Date of the first candle of the gap (i-2).")
+    end_date: str = Field(
+        ...,
+        description=(
+            "Date the drawn zone extends to — the right edge of the window, "
+            "since an unmitigated FVG stays live as a target."
+        ),
+    )
+    top_price: Optional[float] = Field(None, description="Upper bound of the gap, USD.")
+    bottom_price: Optional[float] = Field(None, description="Lower bound of the gap, USD.")
+    type: Literal["bullish", "bearish"] = Field(
+        ...,
+        description=(
+            "'bullish' — gap below price, formed on an up-thrust, acts as "
+            "support / a magnet on pullbacks. 'bearish' — gap above price, "
+            "formed on a down-thrust, acts as resistance."
+        ),
+    )
+
+    @field_validator("top_price", "bottom_price", mode="before")
+    @classmethod
+    def _nan_to_none(cls, v):
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _type_lower(cls, v):
+        s = str(v).strip().lower()
+        return s if s in ("bullish", "bearish") else "bullish"
+
+
 class PricePoint(BaseModel):
     """
     One trading day inside the analysis window: the full OHLC bar, share
     volume, the moving averages (MA-50 / MA-200 / EMA-9 / EMA-20), the 14-day
-    RSI, the MACD (12/26/9) line / signal / histogram and the Bollinger Bands
-    (SMA-20 ± 2σ) at that date. Powers the dashboard's candlestick + volume
-    chart and its synchronised RSI & MACD sub-charts.
+    RSI, the MACD (12/26/9) line / signal / histogram, the Bollinger Bands
+    (SMA-20 ± 2σ), the 14-day ATR and the Stochastic Oscillator (%K 14 / %D 3)
+    at that date. Powers the dashboard's candlestick + volume chart and its
+    synchronised sub-charts.
     """
 
     date: str = Field(..., description="ISO trading date.")
@@ -165,6 +233,19 @@ class PricePoint(BaseModel):
     bb_lower: Optional[float] = Field(
         None, description="Bollinger lower band (SMA-20 − 2σ) at this date."
     )
+    atr: Optional[float] = Field(
+        None,
+        description=(
+            "14-period Average True Range at this date (None for the first ~14 "
+            "sessions). Absolute-price volatility gauge, same units as price."
+        ),
+    )
+    stoch_k: Optional[float] = Field(
+        None, description="Stochastic %K (14) at this date. >80 overbought, <20 oversold."
+    )
+    stoch_d: Optional[float] = Field(
+        None, description="Stochastic %D (3-period SMA of %K) at this date."
+    )
     volume: Optional[int] = Field(
         None, description="Share volume for the bar (None if missing / non-finite)."
     )
@@ -191,6 +272,7 @@ class PricePoint(BaseModel):
         "ma_50", "ma_200", "ema_9", "ema_20", "rsi_14",
         "macd_line", "signal_line", "macd_histogram",
         "bb_upper", "bb_middle", "bb_lower",
+        "atr", "stoch_k", "stoch_d",
         mode="before",
     )
     @classmethod
@@ -250,6 +332,26 @@ class TickerSummary(BaseModel):
         None,
         description="Bollinger Bands (SMA-20 ± 2σ) + bandwidth at the latest close.",
     )
+    atr_14: Optional[float] = Field(
+        None,
+        description=(
+            "14-period Average True Range at the latest close, in USD — "
+            "absolute-price volatility. Use it to sanity-check whether a "
+            "Bollinger breakout is backed by real range expansion."
+        ),
+    )
+    stochastic: Optional[Stochastic] = Field(
+        None,
+        description="Stochastic Oscillator (%K 14 / %D 3) at the latest close.",
+    )
+    fvg_zones: list[FvgZone] = Field(
+        default_factory=list,
+        description=(
+            "Active (unmitigated) 3-candle Fair Value Gaps in the window, "
+            "newest first — magnetic liquidity zones that act as support / "
+            "resistance targets."
+        ),
+    )
     data_points: int = Field(
         ..., description="Number of trading days in the analysis window."
     )
@@ -257,9 +359,9 @@ class TickerSummary(BaseModel):
         default_factory=list,
         description=(
             "Per-day OHLCV + MA-50 + MA-200 + EMA-9 + EMA-20 + RSI-14 + MACD "
-            "(line/signal/histogram) + Bollinger (upper/middle/lower) over the "
-            "analysis window, oldest first. Powers the candlestick + volume, "
-            "RSI and MACD charts."
+            "(line/signal/histogram) + Bollinger (upper/middle/lower) + ATR-14 "
+            "+ Stochastic (%K/%D) over the analysis window, oldest first. "
+            "Powers the candlestick + volume chart and the sub-charts."
         ),
     )
 

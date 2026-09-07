@@ -129,6 +129,25 @@ _SYSTEM_PROMPT = (
     "own — confirm it against RSI (is it also >70 / <30 or diverging?) and MACD "
     "(is the histogram confirming or fading?) to filter false breakouts, and "
     "say so explicitly.\n"
+    "1c. Volatility & momentum overlays. ATR-14 is absolute-price volatility "
+    "(same units as price): use it to VALIDATE Bollinger breakouts — a close "
+    "outside a band is only a real breakout if ATR is elevated / expanding "
+    "(range is genuinely widening); if ATR is flat or contracting while price "
+    "pokes a band, treat it as noise inside a low-volatility drift and say so. "
+    "Read the Stochastic Oscillator (%K 14 / %D 3) specifically at the 80 / 20 "
+    "boundaries: a %K/%D bearish crossover (%K crossing below %D) while both are "
+    "ABOVE 80 is an overbought-rollover warning; a bullish crossover (%K above "
+    "%D) while both are BELOW 20 is an oversold-turn signal. A crossover in the "
+    "20–80 middle band is weak — do not over-weight it. Cross-check the "
+    "Stochastic signal against RSI and MACD and note agreement vs conflict.\n"
+    "1d. Fair Value Gaps (SMC). Treat every active FVG in the inputs as a "
+    "MAGNETIC LIQUIDITY ZONE: price is drawn back to unmitigated gaps. A "
+    "bullish FVG (below price) is a support / pullback-buy target; a bearish "
+    "FVG (above price) is a resistance / rally-sell target. In the BASE and "
+    "BULL scenarios you MUST use the nearest relevant FVG's price band as a "
+    "concrete support or upside target (name the actual bottom–top prices), not "
+    "a round-number guess. If no FVG is active for a ticker, say so rather than "
+    "inventing one.\n"
     "1b. High-beta price action: for volatile, high-beta names (e.g. TSLA, SMCI) "
     "the tape is driven as much by structure as by fundamentals. When you judge "
     "a Bollinger Band breakout or an RSI divergence, actively look for aggressive "
@@ -180,7 +199,11 @@ _SYSTEM_PROMPT = (
     "specific causal trigger? generic or low-rigor tone? any scenario missing an "
     "invalidation trigger or investment_impact? does confidence actually reflect "
     "whether the signals agree or conflict? are key_insights vague filler rather "
-    "than the sharpest fact from each input?\n"
+    "than the sharpest fact from each input? was ATR actually used to judge "
+    "whether a Bollinger breakout is real? were the Stochastic %K/%D crossovers "
+    "read against the 80/20 boundaries, not the middle? do the base/bull "
+    "scenarios cite an actual active FVG price band as a target where one "
+    "exists?\n"
     "  c. Revise to fix every issue found.\n"
     "Put a short note of what the critic changed (or 'no changes needed') in "
     "critic_notes.\n"
@@ -230,9 +253,34 @@ def _format_quant_block(rows: list[TickerSummary]) -> str:
             f"14-{unit} RSI {rsi}; "
             f"MACD {_fmt_macd(r.macd)}; "
             f"Bollinger {_fmt_bollinger(r.bollinger)}; "
+            f"ATR-14 {_fmt_price(r.atr_14)}; "
+            f"Stochastic {_fmt_stoch(r.stochastic)}; "
+            f"{_fmt_fvgs(r.fvg_zones)}; "
             f"{r.data_points} bars"
         )
     return "\n".join(lines)
+
+
+def _fmt_stoch(s) -> str:
+    """Compact '%K / %D' rendering of the latest Stochastic snapshot."""
+    if s is None:
+        return "n/a"
+
+    def _n(v: float | None) -> str:
+        return f"{v:.1f}" if v is not None else "n/a"
+
+    return f"%K {_n(s.stoch_k)} / %D {_n(s.stoch_d)}"
+
+
+def _fmt_fvgs(zones) -> str:
+    """One-line summary of the active Fair Value Gaps (SMC liquidity zones)."""
+    if not zones:
+        return "FVG zones: none active"
+    parts = [
+        f"{z.type} {_fmt_price(z.bottom_price)}–{_fmt_price(z.top_price)} (from {z.start_date})"
+        for z in zones[:6]
+    ]
+    return f"FVG zones ({len(zones)} active): " + "; ".join(parts)
 
 
 def _fmt_bollinger(b) -> str:

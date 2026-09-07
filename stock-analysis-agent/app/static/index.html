@@ -358,6 +358,24 @@
   .lw-legend .k-bb     { color: var(--bb); }
   .lw-legend .k-vol    { color: var(--muted); }
 
+  /* SMC / Fair Value Gap overlay boxes on the price pane */
+  .fvg-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+  .fvg-box { position: absolute; border-radius: 2px; }
+  .fvg-box.bullish {
+    background: color-mix(in srgb, var(--buy) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--buy) 32%, transparent);
+  }
+  .fvg-box.bearish {
+    background: color-mix(in srgb, var(--sell) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sell) 32%, transparent);
+  }
+  .fvg-box .fvg-tag {
+    position: absolute; top: 1px; left: 4px;
+    font: 700 8px/1 var(--font-mono); letter-spacing: .08em; opacity: .75;
+  }
+  .fvg-box.bullish .fvg-tag { color: var(--buy); }
+  .fvg-box.bearish .fvg-tag { color: var(--sell); }
+
   /* ═══ CHART CONTROLS TOOLBAR — timeframe + indicators, always above the
      fold and above the chart, so neither gets missed by scrolling past it. ═══ */
   .ws-controls {
@@ -1024,6 +1042,9 @@ function renderTickerHeader() {
               ? `${fmtUSD(s.week52_low)} – ${fmtUSD(s.week52_high)}`
               : "—"
           }</span></div>
+          <div class="tk-stat"><span class="lbl">ATR (14)</span><span class="val">${
+            s && s.atr_14 != null ? fmtUSD(s.atr_14) : "—"
+          }</span></div>
         </div>
       </div>
       <div class="tk-actions">
@@ -1479,7 +1500,7 @@ function drawChartInto(slot, summary) {
     slot._chartController = null;
     return;
   }
-  slot._chartController = buildCandleCharts(slot, series);
+  slot._chartController = buildCandleCharts(slot, series, summary.fvg_zones || []);
 }
 
 // ── indicator registry ─────────────────────────────────────────────────────
@@ -1500,11 +1521,14 @@ const INDICATORS = [
   { key: "ema_9",  label: "EMA-9",  insightName: "9-day EMA", field: "ema_9" },
   { key: "ema_20", label: "EMA-20", insightName: "20-day EMA", field: "ema_20" },
   { key: "bb",     label: "Bollinger Bands", insightName: "Bollinger Bands (SMA-20, 2σ)" },
+  { key: "fvg",    label: "SMC / FVG", insightName: "Fair Value Gaps (Smart Money Concepts)" },
   { key: "vol",    label: "Volume", noInsight: true },
 ];
-const RSI_INDICATOR = { key: "rsi", label: "RSI", insightName: "14-day RSI", field: "rsi_14" };
-const MACD_INDICATOR = { key: "macd", label: "MACD", insightName: "MACD (12/26/9)" };
-const ALL_INDICATOR_DESCRIPTORS = [...INDICATORS, RSI_INDICATOR, MACD_INDICATOR];
+const RSI_INDICATOR   = { key: "rsi",   label: "RSI",   insightName: "14-day RSI", field: "rsi_14" };
+const MACD_INDICATOR  = { key: "macd",  label: "MACD",  insightName: "MACD (12/26/9)" };
+const STOCH_INDICATOR = { key: "stoch", label: "Stochastic", insightName: "Stochastic Oscillator (%K 14 / %D 3)" };
+const ATR_INDICATOR   = { key: "atr",   label: "ATR",   insightName: "14-period Average True Range", field: "atr" };
+const ALL_INDICATOR_DESCRIPTORS = [...INDICATORS, RSI_INDICATOR, MACD_INDICATOR, STOCH_INDICATOR, ATR_INDICATOR];
 
 // Latest non-null value for an indicator, pulled from the price_history array.
 // Scalars return a number; MACD returns a {macd_line, signal_line,
@@ -1526,6 +1550,14 @@ function latestIndicatorValue(key, series) {
       bb_lower: lastOf("bb_lower"), close: lastOf("close"),
     };
     return v.bb_upper == null && v.bb_middle == null && v.bb_lower == null ? null : v;
+  }
+  if (key === "stoch") {
+    const v = { stoch_k: lastOf("stoch_k"), stoch_d: lastOf("stoch_d") };
+    return v.stoch_k == null && v.stoch_d == null ? null : v;
+  }
+  if (key === "fvg") {
+    const zones = (appState.summaries[appState.active] || {}).fvg_zones || [];
+    return zones.length ? { count: zones.length, zones: zones.slice(0, 4) } : null;
   }
   const desc = ALL_INDICATOR_DESCRIPTORS.find((d) => d.key === key);
   return desc && desc.field ? lastOf(desc.field) : null;
@@ -1771,8 +1803,7 @@ function indicatorPanel(controller, ctx, insightCtl) {
       }
       insightCtl.removeInsightCard(key);
     });
-    insightCtl.removeInsightCard("rsi");
-    insightCtl.removeInsightCard("macd");
+    ["rsi", "macd", "stoch", "atr"].forEach((k) => insightCtl.removeInsightCard(k));
     console.log("[chart] cleared all indicators");
   });
   bar.appendChild(clearBtn);
@@ -1897,7 +1928,49 @@ function buildMiniMacdChart(container, series, opts = {}) {
   return { chart, ro };
 }
 
-// ── indicator modal: a big, pannable/zoomable view of RSI or MACD ─────────
+// Stochastic Oscillator mini pane: %K + %D lines, 0-100 scale, 80/20 dotted
+// reference lines. Same compact/expanded split as the others.
+function buildMiniStochChart(container, series, opts = {}) {
+  const LC = window.LightweightCharts;
+  const T = (p) => toChartTime(p.date);
+  const kPts = series.filter((p) => p.stoch_k != null).map((p) => ({ time: T(p), value: p.stoch_k }));
+  const dPts = series.filter((p) => p.stoch_d != null).map((p) => ({ time: T(p), value: p.stoch_d }));
+  if (!LC || typeof LC.createChart !== "function" || !kPts.length) {
+    container.innerHTML = `<p class="hint" style="margin:0;font-size:11px">No data.</p>`;
+    return null;
+  }
+  const big = !!opts.expanded;
+  const muted = cssVar("--muted"), accent = cssVar("--accent"), sell = cssVar("--sell");
+  const buy = cssVar("--buy"), grid = cssVar("--border");
+  const chart = LC.createChart(container, {
+    width: container.clientWidth || 200, height: (big ? container.clientHeight : 0) || (big ? 420 : 64),
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: big ? 11 : 9, attributionLogo: false },
+    grid: big ? { vertLines: { color: grid }, horzLines: { color: grid } } : { vertLines: { visible: false }, horzLines: { visible: false } },
+    rightPriceScale: { visible: big, borderColor: grid },
+    leftPriceScale: { visible: false },
+    timeScale: { visible: big, borderColor: grid },
+    handleScroll: big ? { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } : false,
+    handleScale: big ? { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true } : false,
+  });
+  const pin = { autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) };
+  const k = chart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: big, ...pin });
+  k.setData(kPts);
+  const d = chart.addLineSeries({ color: sell, lineWidth: 1, priceLineVisible: false, lastValueVisible: big, ...pin });
+  d.setData(dPts);
+  const dash = LC.LineStyle ? LC.LineStyle.Dotted : 1;
+  k.createPriceLine({ price: 80, color: sell, lineWidth: 1, lineStyle: dash, axisLabelVisible: big, title: big ? "80" : "" });
+  k.createPriceLine({ price: 20, color: buy, lineWidth: 1, lineStyle: dash, axisLabelVisible: big, title: big ? "20" : "" });
+  const ro = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    if (w > 0) chart.applyOptions({ width: w, height: (big ? container.clientHeight : 64) || 64 });
+  });
+  ro.observe(container);
+  requestAnimationFrame(() => { if (container.clientWidth > 0) chart.timeScale().fitContent(); });
+  if (!big) lwCharts.push({ chart, el: container, ro });
+  return { chart, ro };
+}
+
+// ── indicator modal: a big, pannable/zoomable view of an indicator ────────
 let modalChartHandle = null;   // { chart, ro } for the chart currently in the modal
 
 function closeChartModal() {
@@ -1912,15 +1985,17 @@ function closeChartModal() {
   modal.hidden = true;
 }
 
-// kind: "rsi" | "macd". ctx = { ticker, series }.
+// kind: "rsi" | "macd" | "stoch" | "atr". ctx = { ticker, series }.
+const _MODAL_TITLES = {
+  rsi: "RSI (14)", macd: "MACD (12/26/9)", stoch: "Stochastic (%K 14 / %D 3)", atr: "ATR (14)",
+};
 function openIndicatorModal(kind, ctx) {
   const modal = $("#chart-modal");
   const host = $("#chart-modal-chart");
   if (!modal || !host) return;
   closeChartModal();                       // tear down any previous one first
 
-  $("#chart-modal-title").textContent =
-    (kind === "rsi" ? "RSI (14)" : "MACD (12/26/9)") + " · " + ctx.ticker;
+  $("#chart-modal-title").textContent = (_MODAL_TITLES[kind] || kind) + " · " + ctx.ticker;
   modal.hidden = false;
 
   // The container only has real dimensions once the modal is shown, so build
@@ -1931,6 +2006,14 @@ function openIndicatorModal(kind, ctx) {
         host,
         ctx.series.filter((p) => p.rsi_14 != null).map((p) => ({ time: toChartTime(p.date), value: p.rsi_14 })),
         { min: 0, max: 100, refLines: [70, 30], expanded: true },
+      );
+    } else if (kind === "stoch") {
+      modalChartHandle = buildMiniStochChart(host, ctx.series, { expanded: true });
+    } else if (kind === "atr") {
+      modalChartHandle = buildMiniLineChart(
+        host,
+        ctx.series.filter((p) => p.atr != null).map((p) => ({ time: toChartTime(p.date), value: p.atr })),
+        { expanded: true },
       );
     } else {
       modalChartHandle = buildMiniMacdChart(host, ctx.series, { expanded: true });
@@ -2008,6 +2091,50 @@ function technicalIndicatorsSection(ctx, insightCtl) {
   wrap.appendChild(macdCard);
   buildMiniMacdChart(macdCard.querySelector(`#tech-mini-macd-${CSS.escape(ctx.ticker)}`), series);
 
+  // Stochastic (%K 14 / %D 3)
+  const kVal = last("stoch_k"), dVal = last("stoch_d");
+  const stochCard = document.createElement("div");
+  stochCard.className = "tech-card";
+  const stochTag = kVal == null ? "" : kVal > 80 ? ' <span class="neg">OB</span>' : kVal < 20 ? ' <span class="pos">OS</span>' : "";
+  stochCard.innerHTML = `
+    <div class="tech-card-head">
+      <span class="tech-card-title">Stochastic</span>
+      <span class="tech-card-value">${kVal == null ? "—" : kVal.toFixed(1)}${stochTag}</span>
+      ${expandBtnHTML}
+    </div>
+    <div class="tech-mini" id="tech-mini-stoch-${esc(ctx.ticker)}"></div>`;
+  const aiStoch = document.createElement("button");
+  aiStoch.type = "button"; aiStoch.className = "ai-link";
+  wireAiToggle(aiStoch, STOCH_INDICATOR.key, STOCH_INDICATOR.label, STOCH_INDICATOR.insightName, insightCtl);
+  stochCard.appendChild(aiStoch);
+  stochCard.querySelector(".tech-expand").addEventListener("click", () => openIndicatorModal("stoch", ctx));
+  wrap.appendChild(stochCard);
+  buildMiniStochChart(stochCard.querySelector(`#tech-mini-stoch-${CSS.escape(ctx.ticker)}`), series);
+
+  // ATR (14) — absolute-price volatility
+  const atrVal = last("atr");
+  const atrPct = atrVal != null && ctx.series.length && last("close") ? (atrVal / last("close") * 100) : null;
+  const atrCard = document.createElement("div");
+  atrCard.className = "tech-card";
+  atrCard.innerHTML = `
+    <div class="tech-card-head">
+      <span class="tech-card-title">ATR (14)</span>
+      <span class="tech-card-value">${atrVal == null ? "—" : fmtUSD(atrVal)}${atrPct == null ? "" : ` <span style="color:var(--muted)">${atrPct.toFixed(1)}%</span>`}</span>
+      ${expandBtnHTML}
+    </div>
+    <div class="tech-mini" id="tech-mini-atr-${esc(ctx.ticker)}"></div>`;
+  const aiAtr = document.createElement("button");
+  aiAtr.type = "button"; aiAtr.className = "ai-link";
+  wireAiToggle(aiAtr, ATR_INDICATOR.key, ATR_INDICATOR.label, ATR_INDICATOR.insightName, insightCtl);
+  atrCard.appendChild(aiAtr);
+  atrCard.querySelector(".tech-expand").addEventListener("click", () => openIndicatorModal("atr", ctx));
+  wrap.appendChild(atrCard);
+  buildMiniLineChart(
+    atrCard.querySelector(`#tech-mini-atr-${CSS.escape(ctx.ticker)}`),
+    series.filter((p) => p.atr != null).map((p) => ({ time: toChartTime(p.date), value: p.atr })),
+    {},
+  );
+
   // Moving Averages (text stats — already toggleable as chart overlays)
   const maCard = document.createElement("div");
   maCard.className = "tech-card";
@@ -2045,7 +2172,7 @@ function technicalIndicatorsSection(ctx, insightCtl) {
 // TradingView's lightweight-charts. Returns a controller
 // { state, setIndicator(key, on), updateLastPrice, destroy }, or null when
 // the library is missing or there is nothing to draw.
-function buildCandleCharts(container, series) {
+function buildCandleCharts(container, series, fvgZones = []) {
   const LC = window.LightweightCharts;
   const priceWrap = document.createElement("div");
   priceWrap.className = "lw-wrap price";
@@ -2195,6 +2322,40 @@ function buildCandleCharts(container, series) {
     `<b class="k-ema9">— EMA-9</b><b class="k-ema20">— EMA-20</b>` +
     `<b class="k-bb">≈ Bollinger (20, 2σ)</b><b class="k-vol">▮ Volume</b></div>`);
 
+  // ── SMC / Fair Value Gap overlay: absolutely-positioned boxes on top of the
+  //    plot (lightweight-charts v4 has no rectangle primitive). Each active FVG
+  //    is drawn from its start date out to the right edge, spanning its price
+  //    band; repositioned on every pan / zoom / resize via renderFvg(). Hidden
+  //    until the "SMC / FVG" dropdown toggle turns it on. ──
+  const fvgLayer = document.createElement("div");
+  fvgLayer.className = "fvg-layer";
+  fvgLayer.hidden = true;
+  priceWrap.appendChild(fvgLayer);
+  const fvgList = (fvgZones || []).filter(
+    (z) => z && z.top_price != null && z.bottom_price != null && z.start_date,
+  );
+
+  function renderFvg() {
+    if (fvgLayer.hidden || !fvgList.length) { fvgLayer.innerHTML = ""; return; }
+    const ts = priceChart.timeScale();
+    const plotW = ts.width();
+    let html = "";
+    for (const z of fvgList) {
+      const rawX = ts.timeToCoordinate(toChartTime(z.start_date));
+      const x1 = Math.max(0, rawX == null ? 0 : rawX);
+      const yTop = candle.priceToCoordinate(z.top_price);
+      const yBot = candle.priceToCoordinate(z.bottom_price);
+      if (yTop == null || yBot == null) continue;
+      const top = Math.min(yTop, yBot);
+      const h = Math.max(2, Math.abs(yBot - yTop));
+      const w = Math.max(0, plotW - x1);
+      html += `<div class="fvg-box ${z.type === "bearish" ? "bearish" : "bullish"}" ` +
+        `style="left:${x1}px;top:${top}px;width:${w}px;height:${h}px">` +
+        `<span class="fvg-tag">FVG</span></div>`;
+    }
+    fvgLayer.innerHTML = html;
+  }
+
   // ── size the pane to its container: fires once on DOM attach (0 → real
   //    width, the fix for the blank chart) and on window resize. ──
   let fitted = false;
@@ -2205,9 +2366,11 @@ function buildCandleCharts(container, series) {
       priceChart.timeScale().fitContent();
       fitted = true;
     }
+    renderFvg();
   };
   const ro = new ResizeObserver(relayout);
   ro.observe(priceWrap);
+  priceChart.timeScale().subscribeVisibleLogicalRangeChange(renderFvg);
   relayout();
 
   lwCharts.push({ chart: priceChart, el: priceWrap, ro });
@@ -2224,6 +2387,7 @@ function buildCandleCharts(container, series) {
     ema_9: ema9Pts.length > 0, ema_20: ema20Pts.length > 0,
     bb: bbUpperPts.length > 0,
     vol: volPts.length > 0,
+    fvg: false,   // SMC overlay is opt-in
   };
 
   function setIndicator(key, on) {
@@ -2237,6 +2401,7 @@ function buildCandleCharts(container, series) {
       bbLower.applyOptions({ visible: on });
     }
     else if (key === "vol") volume.applyOptions({ visible: on });
+    else if (key === "fvg") { fvgLayer.hidden = !on; renderFvg(); }
     else {
       console.warn(`[chart] unknown indicator key: ${key}`);
       return;
