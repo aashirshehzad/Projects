@@ -296,6 +296,27 @@
   }
   .a3-thesis p { font-size: 12.5px; line-height: 1.65; margin: var(--s-2) 0; color: var(--ink-dim); }
 
+  /* ═══ RIGHT · REPORT-GENERATION PROGRESS ═══ */
+  .a3-loading {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 52px 16px; text-align: center; color: var(--muted);
+  }
+  .a3-loading .a3-pct {
+    font: 800 32px/1 var(--font-mono); letter-spacing: -.02em;
+    background: linear-gradient(180deg, var(--ink), var(--ink-dim));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .a3-loading .a3-track {
+    width: 180px; height: 6px; border-radius: var(--r-full);
+    background: var(--panel-3); overflow: hidden;
+  }
+  .a3-loading .a3-fill {
+    height: 100%; width: 0%; border-radius: var(--r-full);
+    background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+    transition: width .3s linear;
+  }
+  .a3-loading .a3-msg { font-size: 12px; max-width: 220px; line-height: 1.5; }
+
   /* ═══ SHARED · CARD ═══ */
   .card {
     background: var(--panel); border: 1px solid var(--border);
@@ -1068,6 +1089,7 @@ async function generateReportForActive() {
   const btn = $("#tk-report-btn");
   if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
   setStatus(`Generating report for ${sym} … ~30-60s.`);
+  startReportProgress(45000, `Generating the report for ${sym}…`);
 
   try {
     const res = await fetch("analyze", {
@@ -1096,11 +1118,14 @@ async function generateReportForActive() {
 
     setFooterUpdated();
     setStatus(`Report ready for ${sym}.`);
+    finishReportProgress();
     renderAgent3();
     await renderWorkspace();
   } catch (err) {
     setStatus(`Report failed: ${err.message}`, true);
+    renderAgent3();
   } finally {
+    finishReportProgress();
     const b = $("#tk-report-btn");
     if (b) { b.disabled = false; b.textContent = "Generate Report"; }
   }
@@ -1236,12 +1261,50 @@ function finishRunProgress(ok) {
   }, 850);
 }
 
+// Same time-based easing, rendered as a big percentage + bar in the middle of
+// the Agent 3 panel so the report area itself shows the run is in progress.
+let reportProgressTimer = null;
+
+function startReportProgress(estMs, msg) {
+  const host = $("#agent3");
+  if (!host) return;
+  host.innerHTML =
+    `<div class="a3-loading">` +
+    `<span class="a3-pct">0%</span>` +
+    `<div class="a3-track"><div class="a3-fill"></div></div>` +
+    `<span class="a3-msg">${esc(msg || "Generating report…")}</span>` +
+    `</div>`;
+  const pctEl = host.querySelector(".a3-pct");
+  const fillEl = host.querySelector(".a3-fill");
+  const started = performance.now();
+  clearInterval(reportProgressTimer);
+  reportProgressTimer = setInterval(() => {
+    if (!pctEl.isConnected) return;   // panel re-rendered with the real report
+    const elapsed = performance.now() - started;
+    const pct = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / (estMs * 0.55)))));
+    pctEl.textContent = pct + "%";
+    fillEl.style.width = pct + "%";
+  }, 250);
+}
+
+function finishReportProgress() {
+  clearInterval(reportProgressTimer);
+  reportProgressTimer = null;
+  const pctEl = $("#agent3 .a3-pct");
+  const fillEl = $("#agent3 .a3-fill");
+  if (pctEl) pctEl.textContent = "100%";
+  if (fillEl) fillEl.style.width = "100%";
+  // The caller re-renders #agent3 with the real report immediately after.
+}
+
 async function runFullAnalysis() {
   const tickers = appState.tickers;
   if (!tickers.length) { setStatus("Watchlist is empty.", true); return; }
   insightCache = {};                 // fresh prices → drop last run's insights
   setStatus(`Running pipeline for ${tickers.length} tickers … ~90s.`);
-  startRunProgress(Math.min(120000, tickers.length * 7000 + 15000));
+  const estMs = Math.min(120000, tickers.length * 7000 + 15000);
+  startRunProgress(estMs);
+  startReportProgress(estMs, `Running the multi-agent pipeline for ${tickers.length} ticker${tickers.length === 1 ? "" : "s"}…`);
 
   let ok = false;
   const started = performance.now();
@@ -1263,13 +1326,16 @@ async function runFullAnalysis() {
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     setStatus(`Done in ${secs}s · ${data.status}`);
     setFooterUpdated();
+    finishReportProgress();
     renderWatchlist();
     renderAgent3();
     await renderWorkspace();
     ok = true;
   } catch (err) {
     setStatus(`Request failed: ${err.message}`, true);
+    renderAgent3();
   } finally {
+    finishReportProgress();
     finishRunProgress(ok);
   }
 }
