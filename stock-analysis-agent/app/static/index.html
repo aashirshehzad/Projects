@@ -173,7 +173,7 @@
   /* ═══ 3-PANEL LAYOUT ═══ */
   .terminal {
     display: grid;
-    grid-template-columns: 60px minmax(224px, 19%) minmax(0, 1fr) minmax(300px, 26%);
+    grid-template-columns: minmax(224px, 19%) minmax(0, 1fr) minmax(300px, 26%);
     height: calc(100vh - var(--header-h) - var(--footer-h));
   }
   .panel { overflow-y: auto; padding: var(--s-4); }
@@ -235,6 +235,7 @@
   .wl-chg.flat { background: var(--panel-3); color: var(--muted); }
 
   .run-btn {
+    position: relative; overflow: hidden;
     width: 100%; margin-top: var(--s-4); padding: 12px 14px;
     font: 700 12.5px/1 var(--font-sans); letter-spacing: .04em;
     border: 0; border-radius: var(--r-sm); cursor: pointer;
@@ -245,7 +246,16 @@
   }
   .run-btn:hover:not(:disabled) { filter: brightness(1.08); }
   .run-btn:active:not(:disabled) { transform: translateY(1px); }
-  .run-btn:disabled { opacity: .5; cursor: progress; }
+  .run-btn:disabled { cursor: progress; }
+  /* loading state: a darkened track with a bright fill that grows toward 100% */
+  .run-btn.loading { background: var(--c-primary-lo); opacity: 1; }
+  .run-btn .run-fill {
+    position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    transition: width .3s linear;
+  }
+  .run-btn .run-txt { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; }
+  .run-btn .run-txt .spinner { border-top-color: #fff; border-color: rgba(255,255,255,.35); }
   .hint { color: var(--muted); font-size: 11px; line-height: 1.5; margin: var(--s-2) 2px 0; }
 
   /* ═══ CENTER · WORKSPACE ═══ */
@@ -391,6 +401,8 @@
     background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
     color: var(--accent-hi);
   }
+  .pill-clear { color: var(--sell); border-color: color-mix(in srgb, var(--sell) 35%, transparent); }
+  .pill-clear:hover { color: var(--sell); border-color: var(--sell); background: var(--neg-soft); }
 
   /* ═══ AI INSIGHT GRID ═══ */
   /* Sits inside .ws-controls, directly under the indicator pills — its own
@@ -405,6 +417,7 @@
   @media (min-width: 1280px) { .insights-grid { grid-template-columns: repeat(3, 1fr); } }
   .insights-grid:empty { display: none; margin-top: 0; padding-top: 0; border-top: 0; }
   .insight-card {
+    position: relative;
     display: flex; flex-direction: column; min-height: 128px;
     padding: 13px 15px; border-radius: var(--r);
     border: 1px solid var(--border); background: var(--panel-2);
@@ -412,9 +425,16 @@
     animation: fade-up .18s var(--t);
   }
   @keyframes fade-up { from { opacity: 0; transform: translateY(4px); } }
+  .insight-card .insight-hide {
+    position: absolute; top: 8px; right: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--r-xs);
+    background: none; color: var(--muted); cursor: pointer;
+  }
+  .insight-card .insight-hide:hover { color: var(--ink); background: var(--panel-3); }
   .insight-card .insight-title {
     font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 7px;
+    color: var(--muted); margin-bottom: 7px; padding-right: 22px;
   }
   .insight-card .insight-body { color: var(--ink-dim); }
   .insight-card.is-loading .insight-body { color: var(--muted); }
@@ -484,35 +504,7 @@
   .chart-wrap { position: relative; height: 300px; }
   .chart-wrap.short { height: 220px; }
 
-  /* ═══ APP RAIL — icon navigation, Dashboard is the only wired route ═══ */
-  .app-rail {
-    display: flex; flex-direction: column; align-items: stretch;
-    background: var(--c-surface-2); border-right: 1px solid var(--border);
-    padding: var(--s-3) 0; gap: 2px; overflow: hidden;
-    transition: width var(--t);
-    width: 60px;
-  }
-  .app-rail.expanded { width: 176px; }
-  .rail-btn {
-    display: flex; align-items: center; gap: 12px; padding: 10px 20px;
-    border: 0; background: transparent; color: var(--muted); cursor: pointer;
-    font: 600 11.5px/1 var(--font-sans); white-space: nowrap;
-    border-left: 2px solid transparent;
-  }
-  .rail-btn svg { flex: 0 0 auto; width: 18px; height: 18px; }
-  .rail-btn:hover { color: var(--ink); background: var(--panel-2); }
-  .rail-btn.active { color: var(--accent-hi); border-left-color: var(--accent); background: var(--accent-soft); }
-  .rail-btn .rail-label { opacity: 0; transition: opacity var(--t); }
-  .app-rail.expanded .rail-label { opacity: 1; }
-  .rail-spacer { flex: 1; }
-  .rail-collapse {
-    margin: var(--s-2) 10px 0; padding: 8px; border-radius: var(--r-sm);
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-  }
-  .rail-collapse:hover { color: var(--ink); border-color: var(--border-strong); }
-
-  /* ═══ HEADER · SEARCH / BELL / THEME (mostly decorative chrome) ═══ */
+  /* ═══ HEADER · SEARCH (decorative chrome) ═══ */
   .head-search {
     display: none; align-items: center; gap: 8px;
     padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--r-full);
@@ -531,7 +523,6 @@
     background: transparent; color: var(--muted); cursor: pointer; margin-left: 6px;
   }
   .icon-btn:hover { color: var(--ink); background: var(--panel-2); border-color: var(--border); }
-  .icon-btn.disabled { cursor: not-allowed; opacity: .55; }
 
   /* ═══ CENTER · TICKER HEADER (company identity + stats) ═══ */
   .tk-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: var(--s-4); flex-wrap: wrap; }
@@ -711,7 +702,6 @@
     body { overflow: auto; }
     .terminal { grid-template-columns: 1fr !important; height: auto; }
     .panel { max-height: none; }
-    .app-rail { display: none; }
     .panel-left { border-right: 0; border-bottom: 1px solid var(--border); }
     .panel-right { border-left: 0; border-top: 1px solid var(--border); }
   }
@@ -730,60 +720,11 @@
       <span id="market-dot" class="market-dot closed" title="Market status unknown"></span>
       <span id="market-label" class="num">—</span>
     </span>
-    <button class="icon-btn disabled" type="button" title="Notifications (coming soon)" aria-label="Notifications">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    </button>
-    <button class="icon-btn disabled" type="button" title="Dark theme (only theme available)" aria-label="Theme">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    </button>
     <span id="status" class="head-status" hidden></span>
   </div>
 </header>
 
 <div class="terminal">
-  <nav class="app-rail" id="app-rail">
-    <button class="rail-btn active" type="button" data-route="dashboard">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-      <span class="rail-label">Dashboard</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="watchlist">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20l-1.4-1.3C5.6 14.4 2 11.3 2 7.6 2 4.7 4.4 2.5 7.2 2.5c1.6 0 3.1.8 4.1 2 .8.9 1 1.9 1 1.9s.2-1 1-1.9c1-1.2 2.5-2 4.1-2 2.8 0 5.1 2.2 5.1 5.1 0 3.7-3.6 6.8-8.6 11.1L12 20z"/></svg>
-      <span class="rail-label">Watchlist</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="markets">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
-      <span class="rail-label">Markets</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="news">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H4z"/><path d="M4 4v18l3-2 3 2 3-2 3 2V4"/></svg>
-      <span class="rail-label">News</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="screener">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span class="rail-label">Screener</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="reports">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
-      <span class="rail-label">Reports</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="agents">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
-      <span class="rail-label">Agents</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="alerts">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span class="rail-label">Alerts</span>
-    </button>
-    <button class="rail-btn" type="button" data-route="settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span class="rail-label">Settings</span>
-    </button>
-    <div class="rail-spacer"></div>
-    <button class="rail-collapse" id="rail-collapse" type="button" title="Expand navigation" aria-label="Expand navigation">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-  </nav>
-
   <aside class="panel panel-left">
     <p class="panel-title">Market Snapshot</p>
     <div id="market-snapshot" class="snapshot"></div>
@@ -1234,13 +1175,54 @@ function agent3Report(r) {
 }
 
 // ── full pipeline run ──────────────────────────────────────────────────────
+// There's no real progress signal from /analyze (it's one long POST), so the
+// button's percentage is a time-based estimate that eases toward ~95% over the
+// expected runtime and snaps to 100% when the response lands — enough to show
+// the run is alive and roughly how far along it is.
+let runProgressTimer = null;
+
+function startRunProgress(estMs) {
+  const btn = $("#run");
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.innerHTML =
+    `<span class="run-fill"></span>` +
+    `<span class="run-txt"><span class="spinner"></span>Analysing… 0%</span>`;
+  const fill = btn.querySelector(".run-fill");
+  const txt = btn.querySelector(".run-txt");
+  const started = performance.now();
+  clearInterval(runProgressTimer);
+  runProgressTimer = setInterval(() => {
+    const elapsed = performance.now() - started;
+    const pct = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / (estMs * 0.55)))));
+    fill.style.width = pct + "%";
+    txt.innerHTML = `<span class="spinner"></span>Analysing… ${pct}%`;
+  }, 250);
+}
+
+function finishRunProgress(ok) {
+  clearInterval(runProgressTimer);
+  runProgressTimer = null;
+  const btn = $("#run");
+  const fill = btn.querySelector(".run-fill");
+  const txt = btn.querySelector(".run-txt");
+  if (fill) fill.style.width = "100%";
+  if (txt) txt.textContent = ok ? "Done · 100%" : "Failed";
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.classList.remove("loading");
+    btn.textContent = "Run full analysis";
+  }, 850);
+}
+
 async function runFullAnalysis() {
   const tickers = appState.tickers;
   if (!tickers.length) { setStatus("Watchlist is empty.", true); return; }
-  $("#run").disabled = true;
   insightCache = {};                 // fresh prices → drop last run's insights
   setStatus(`Running pipeline for ${tickers.length} tickers … ~90s.`);
+  startRunProgress(Math.min(120000, tickers.length * 7000 + 15000));
 
+  let ok = false;
   const started = performance.now();
   try {
     const res = await fetch("analyze", {
@@ -1263,10 +1245,11 @@ async function runFullAnalysis() {
     renderWatchlist();
     renderAgent3();
     await renderWorkspace();
+    ok = true;
   } catch (err) {
     setStatus(`Request failed: ${err.message}`, true);
   } finally {
-    $("#run").disabled = false;
+    finishRunProgress(ok);
   }
 }
 
@@ -1659,10 +1642,14 @@ let insightCache = {};
 // is triggered — lands in the same grid with the same cache/retry behaviour.
 function createInsightController(grid, ctx) {
   const cardId = (key) => `insight-card-${ctx.ticker}-${key}`;
+  // Let any toggle that reflects "is this analysis showing?" re-sync itself
+  // (e.g. the RSI/MACD cards' Show/Hide AI Insight buttons, or a pill).
+  const notifyChanged = (key) =>
+    document.dispatchEvent(new CustomEvent("insight:changed", { detail: { key } }));
 
   function removeInsightCard(key) {
     const el = document.getElementById(cardId(key));
-    if (el) el.remove();                              // container :empty → hidden
+    if (el) { el.remove(); notifyChanged(key); }      // container :empty → hidden
   }
 
   function isActive(key) {
@@ -1677,9 +1664,15 @@ function createInsightController(grid, ctx) {
     card.id = id;
     card.className = "insight-card is-loading";
     card.innerHTML =
+      `<button type="button" class="insight-hide" title="Hide this analysis" aria-label="Hide this analysis">` +
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>` +
+      `</button>` +
       `<span class="insight-title">${esc(label)} · AI insight</span>` +
       `<div class="insight-body"><span class="spinner"></span>Analysing ${esc(label)} for ${esc(ctx.ticker)}…</div>`;
     grid.appendChild(card);
+    // Hiding removes only the analysis card — the chart overlay stays as-is.
+    card.querySelector(".insight-hide").addEventListener("click", () => removeInsightCard(key));
+    notifyChanged(key);
     const body = card.querySelector(".insight-body");
     const cacheKey = `${ctx.ticker}:${key}`;
 
@@ -1762,6 +1755,28 @@ function indicatorPanel(controller, ctx, insightCtl) {
     bar.appendChild(btn);
   });
 
+  // "Clear all" — every overlay off, every AI-insight card (pill-driven AND the
+  // RSI/MACD tech cards) removed, chart back to bare candles.
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "pill pill-clear";
+  clearBtn.textContent = "Clear all";
+  clearBtn.addEventListener("click", () => {
+    bar.querySelectorAll("button[data-key]").forEach((b) => {
+      const key = b.dataset.key;
+      if (b.classList.contains("active")) {
+        b.classList.remove("active");
+        b.setAttribute("aria-pressed", "false");
+        try { controller.setIndicator(key, false); } catch (err) { console.error(`[chart] setIndicator(${key})`, err); }
+      }
+      insightCtl.removeInsightCard(key);
+    });
+    insightCtl.removeInsightCard("rsi");
+    insightCtl.removeInsightCard("macd");
+    console.log("[chart] cleared all indicators");
+  });
+  bar.appendChild(clearBtn);
+
   return bar;
 }
 
@@ -1780,6 +1795,12 @@ function wireAiToggle(btn, key, label, insightName, insightCtl) {
     }
     sync();
   });
+  // Re-sync if the card is dismissed by its own "hide" button or by "Clear all".
+  const onChanged = (e) => {
+    if (!btn.isConnected) { document.removeEventListener("insight:changed", onChanged); return; }
+    if (!e.detail || e.detail.key === key) sync();
+  };
+  document.addEventListener("insight:changed", onChanged);
 }
 
 // lightweight-charts line pane for a Technical Indicator (e.g. RSI).
@@ -2085,17 +2106,13 @@ function buildCandleCharts(container, series) {
     rightPriceScale: { borderColor: grid, autoScale: true, scaleMargins: { top: 0.16, bottom: 0.14 } },
     timeScale: { borderColor: grid, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
-    // Plain mouse-wheel pan/zoom is OFF: this chart sits inside a page the
-    // user scrolls vertically, and lightweight-charts' default wheel handling
-    // hijacks that scroll the moment the cursor is over a pane. Drag-to-pan,
-    // axis-drag-to-zoom and touch-pinch still work. Trackpad pinch-to-zoom
-    // (the TradingView-style "expand the chart" gesture) is restored below via
-    // a manual ctrl+wheel handler — browsers report a trackpad pinch as a
-    // `wheel` event with `ctrlKey: true`, which is otherwise indistinguishable
-    // from plain two-finger scroll, so it needs its own listener rather than
-    // a library flag.
+    // Mouse-wheel and trackpad-pinch both ZOOM the chart (handleScale.mouseWheel).
+    // Wheel *panning* stays off so the gesture is unambiguous. The trade-off:
+    // while the cursor is over the chart the wheel zooms it instead of scrolling
+    // the page — expected for a charting surface, and the user asked for wheel
+    // zoom to work like the trackpad does.
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-    handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
+    handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
   };
 
   // Fall back to a sane width: the card is still detached from the DOM here, so
@@ -2195,27 +2212,11 @@ function buildCandleCharts(container, series) {
 
   lwCharts.push({ chart: priceChart, el: priceWrap, ro });
 
-  // ── trackpad pinch-to-zoom (TradingView-style), independent of plain scroll ──
-  // A ctrl+wheel event only ever comes from a trackpad pinch gesture (or the
-  // ctrl+scroll-to-zoom keyboard convention) — real two-finger scrolling never
-  // sets ctrlKey. So: ctrlKey → zoom the chart (and preventDefault, since the
-  // browser's own reflex for ctrl+wheel is to zoom the *page*); no ctrlKey →
-  // do nothing and let the event fall through to the page's normal scroll.
-  function attachPinchZoom(chart, el) {
-    el.addEventListener("wheel", (e) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      const ts = chart.timeScale();
-      const range = ts.getVisibleLogicalRange();
-      if (!range) return;
-      const span = range.to - range.from;
-      const zoomFactor = e.deltaY < 0 ? 0.88 : 1 / 0.88;   // pinch-out (deltaY<0) = zoom in
-      const newSpan = Math.max(span * zoomFactor, 4);       // don't zoom in past ~4 bars
-      const center = range.from + span / 2;
-      ts.setVisibleLogicalRange({ from: center - newSpan / 2, to: center + newSpan / 2 });
-    }, { passive: false });
-  }
-  attachPinchZoom(priceChart, priceWrap);
+  // Mouse wheel and trackpad pinch zoom are handled natively by the library
+  // (handleScale.mouseWheel / .pinch above). A plain ctrl+wheel would also make
+  // the browser zoom the whole page, so swallow that default while leaving the
+  // library's own zoom to run.
+  priceWrap.addEventListener("wheel", (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
 
   // ── indicator controller ──
   const state = {
@@ -2389,28 +2390,6 @@ function startSnapshotPolling() {
   snapshotTimer = setInterval(pollMarketSnapshot, POLL_INTERVAL_MS * 3);
 }
 
-// ── app rail: Dashboard is the only wired route; everything else is a
-//    "coming soon" placeholder, and the collapse button just widens the rail
-//    to show text labels. ──
-function wireAppRail() {
-  const rail = $("#app-rail");
-  if (!rail) return;
-  rail.querySelectorAll(".rail-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const route = btn.dataset.route;
-      if (route === "dashboard") return;
-      setStatus(`${btn.querySelector(".rail-label").textContent} — coming soon.`);
-    });
-  });
-  const collapseBtn = $("#rail-collapse");
-  if (collapseBtn) {
-    collapseBtn.addEventListener("click", () => {
-      rail.classList.toggle("expanded");
-      collapseBtn.title = rail.classList.contains("expanded") ? "Collapse navigation" : "Expand navigation";
-    });
-  }
-}
-
 // ── chart toolbar: indicators dropdown + fullscreen + export ───────────────
 function wireChartToolbar() {
   const dropdown = $("#ind-dropdown");
@@ -2488,7 +2467,6 @@ $("#ticker-search").addEventListener("keydown", (e) => {
   }
 });
 
-wireAppRail();
 wireChartToolbar();
 wireChartModal();
 wireHeaderSearch();
