@@ -566,11 +566,16 @@
   /* ═══ CENTER · TICKER HEADER (company identity + stats) ═══ */
   .tk-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: var(--s-4); flex-wrap: wrap; }
   .tk-avatar {
+    position: relative; overflow: hidden;
     flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--r-sm);
     display: flex; align-items: center; justify-content: center;
     font: 800 15px/1 var(--font-sans); color: #fff;
     background: linear-gradient(135deg, var(--accent), var(--c-ema) 130%);
     box-shadow: 0 4px 14px -2px var(--accent-glow);
+  }
+  .tk-avatar .tk-logo {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; padding: 6px; background: #fff;
   }
   .tk-id { min-width: 0; flex: 1 1 260px; }
   .tk-id-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -1042,10 +1047,14 @@ function renderTickerHeader() {
     : null;
 
   const tags = [s && s.sector, s && s.industry].filter(Boolean);
+  const logoUrl = logoFor(sym);
 
   host.innerHTML = `
     <div class="tk-header">
-      <div class="tk-avatar">${esc((sym || "?").slice(0, 1))}</div>
+      <div class="tk-avatar">
+        ${logoUrl ? `<img class="tk-logo" src="${esc(logoUrl)}" alt="" />` : ""}
+        <span>${esc((sym || "?").slice(0, 1))}</span>
+      </div>
       <div class="tk-id">
         <div class="tk-id-row">
           <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em">${esc(sym || "—")}</h2>
@@ -1078,6 +1087,19 @@ function renderTickerHeader() {
   if (wlBtn) wlBtn.addEventListener("click", () => toggleWatchlist(sym));
   const repBtn = $("#tk-report-btn");
   if (repBtn) repBtn.addEventListener("click", generateReportForActive);
+  // If the brand logo 404s (no Clearbit coverage), drop it and let the
+  // generated letter avatar underneath show through.
+  const logoImg = host.querySelector(".tk-logo");
+  if (logoImg) logoImg.addEventListener("error", () => logoImg.remove());
+}
+
+// Company logo by ticker from Financial Modeling Prep's public image CDN
+// (100×100 brand marks, good US-equity coverage, no key needed). The <img>'s
+// error handler falls back to the generated letter avatar for anything it
+// doesn't have (foreign symbols, indices).
+function logoFor(ticker) {
+  if (!ticker || !/^[A-Za-z][A-Za-z.\-]{0,9}$/.test(ticker)) return null;
+  return `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(ticker.toUpperCase())}.png`;
 }
 
 // "Generate Report" — runs the full Agent 1/2/2.5/3 pipeline for just the
