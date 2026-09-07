@@ -659,6 +659,11 @@
     font-size: 12px; line-height: 1.55; color: var(--ink-dim); padding-top: 6px;
     border-top: 1px dashed var(--border); margin-top: 2px;
   }
+  .tech-card .tech-backtest {
+    font-size: 10.5px; line-height: 1.5; color: var(--muted); cursor: help;
+    border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 2px;
+  }
+  .tech-card .tech-backtest b { color: var(--ink-dim); font-weight: 700; }
   .tech-expand {
     display: inline-flex; align-items: center; justify-content: center;
     width: 22px; height: 22px; border-radius: var(--r-xs); flex: 0 0 auto;
@@ -2107,6 +2112,30 @@ function wireChartModal() {
 // MACD mini-charts (each with its own AI-insight toggle, sharing insightCtl
 // with the indicator dropdown), plus text-stat readouts for the moving
 // averages and Bollinger Bands already drawn as overlays on the main chart.
+// Quick in-sample backtest of the textbook RSI mean-reversion rule over the
+// bars currently loaded: go long the first time RSI closes below 30, exit when
+// it next closes above 70 (or mark-to-last-close at the end). A trade is a
+// "win" if the exit price beats the entry. Small-sample and in-sample — this
+// is a description of the loaded window, not a forward-looking edge.
+function rsiBacktest(series) {
+  const bars = (series || []).filter((p) => p.rsi_14 != null && p.close != null);
+  const rets = [];
+  let entry = null;
+  for (const b of bars) {
+    if (entry == null && b.rsi_14 < 30) entry = b.close;
+    else if (entry != null && b.rsi_14 > 70) { rets.push((b.close / entry - 1) * 100); entry = null; }
+  }
+  let open = false;
+  if (entry != null && bars.length) { rets.push((bars[bars.length - 1].close / entry - 1) * 100); open = true; }
+  const n = rets.length;
+  const wins = rets.filter((r) => r > 0).length;
+  return {
+    n, wins, open, bars: bars.length,
+    winRate: n ? wins / n : null,
+    avg: n ? rets.reduce((a, r) => a + r, 0) / n : 0,
+  };
+}
+
 function technicalIndicatorsSection(ctx, insightCtl) {
   const series = ctx.series;
   const last = (f) => {
@@ -2122,6 +2151,10 @@ function technicalIndicatorsSection(ctx, insightCtl) {
 
   // RSI
   const rsiVal = last("rsi_14");
+  const bt = rsiBacktest(series);
+  const btLine = bt.n === 0
+    ? `<div class="tech-backtest" title="No RSI-below-30 entry occurred in the ${bt.bars} loaded bars. Try a longer timeframe.">RSI 30/70 rule · no trades in ${bt.bars} bars</div>`
+    : `<div class="tech-backtest" title="Textbook rule: go long when RSI closes below 30, exit when it closes above 70${bt.open ? "; the last trade is still open and marked to the latest close" : ""}. In-sample over the ${bt.bars} loaded bars — a description of this window, not a predictive edge. Switch the timeframe for more trades.">RSI 30/70 rule · <b>${bt.n}</b> trade${bt.n === 1 ? "" : "s"} · <b>${Math.round(bt.winRate * 100)}%</b> win · <b>${bt.avg >= 0 ? "+" : ""}${bt.avg.toFixed(1)}%</b> avg</div>`;
   const rsiCard = document.createElement("div");
   rsiCard.className = "tech-card";
   rsiCard.innerHTML = `
@@ -2130,7 +2163,8 @@ function technicalIndicatorsSection(ctx, insightCtl) {
       <span class="tech-card-value">${rsiVal == null ? "—" : fmtRSI(rsiVal)}</span>
       ${expandBtnHTML}
     </div>
-    <div class="tech-mini" id="tech-mini-rsi-${esc(ctx.ticker)}"></div>`;
+    <div class="tech-mini" id="tech-mini-rsi-${esc(ctx.ticker)}"></div>
+    ${btLine}`;
   const aiRsi = document.createElement("button");
   aiRsi.type = "button"; aiRsi.className = "ai-link";
   wireAiToggle(aiRsi, RSI_INDICATOR.key, RSI_INDICATOR.label, RSI_INDICATOR.insightName, insightCtl);
