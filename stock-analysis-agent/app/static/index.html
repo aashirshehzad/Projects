@@ -603,9 +603,9 @@
     padding: var(--s-3) var(--s-3) var(--s-4); box-shadow: var(--sh-sm);
     display: flex; flex-direction: column; gap: 8px;
   }
-  .tech-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tech-card-head { display: flex; align-items: center; gap: 8px; }
   .tech-card-title { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .tech-card-value { font: 700 13px/1 var(--font-mono); color: var(--ink); }
+  .tech-card-value { font: 700 13px/1 var(--font-mono); color: var(--ink); margin-left: auto; }
   .tech-mini { height: 64px; position: relative; }
   .tech-stat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
   .tech-stat-row .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-right: 7px; }
@@ -621,6 +621,39 @@
     font-size: 12px; line-height: 1.55; color: var(--ink-dim); padding-top: 6px;
     border-top: 1px dashed var(--border); margin-top: 2px;
   }
+  .tech-expand {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: var(--r-xs); flex: 0 0 auto;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    cursor: pointer; transition: color var(--t), border-color var(--t);
+  }
+  .tech-expand:hover { color: var(--ink); border-color: var(--border-strong); }
+
+  /* ═══ CHART MODAL — a big, pannable/zoomable view of one indicator ═══ */
+  .chart-modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chart-modal[hidden] { display: none; }
+  .chart-modal-backdrop {
+    position: absolute; inset: 0; background: rgba(4, 6, 12, .68); backdrop-filter: blur(2px);
+  }
+  .chart-modal-body {
+    position: relative; z-index: 1;
+    width: min(1000px, 90vw); height: min(620px, 80vh);
+    display: flex; flex-direction: column; gap: var(--s-3);
+    padding: var(--s-4); border-radius: var(--r-lg);
+    background: var(--panel); border: 1px solid var(--border-strong); box-shadow: var(--sh-lg);
+  }
+  .chart-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .chart-modal-head span {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .chart-modal-chart {
+    flex: 1; min-height: 0; position: relative;
+    border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; background: var(--panel-2);
+  }
+  .chart-modal .hint { margin: 0; }
 
   /* ═══ CENTER · NEWS + CATALYST ROW ═══ */
   /* auto-fit on the panel's own width, same reasoning as .tech-grid above. */
@@ -812,6 +845,20 @@
   <span id="footer-updated" class="num">Last updated —</span>
 </footer>
 
+<div id="chart-modal" class="chart-modal" hidden>
+  <div class="chart-modal-backdrop" id="chart-modal-backdrop"></div>
+  <div class="chart-modal-body">
+    <div class="chart-modal-head">
+      <span id="chart-modal-title">Indicator</span>
+      <button class="icon-btn" id="chart-modal-close" type="button" title="Close" aria-label="Close">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="chart-modal-chart" class="chart-modal-chart"></div>
+    <p class="hint">Drag to pan · scroll or pinch to zoom · double-click the axis to reset</p>
+  </div>
+</div>
+
 <script>
 const $ = (sel) => document.querySelector(sel);
 const charts = [];      // Chart.js instances
@@ -925,6 +972,7 @@ async function renderWorkspace() {
   const indHost = $("#ws-indicators");
   const techHost = $("#ws-tech-indicators");
   const newsCatHost = $("#ws-news-catalyst");
+  if (typeof closeChartModal === "function") closeChartModal();
   renderTickerHeader();
 
   if (appState.chart && appState.chart.destroy) { appState.chart.destroy(); }
@@ -1734,28 +1782,36 @@ function wireAiToggle(btn, key, label, insightName, insightCtl) {
   });
 }
 
-// Small, non-interactive lightweight-charts line pane for a Technical
-// Indicator card (e.g. RSI). `opts.min`/`opts.max` pin the price scale
-// (RSI is always 0-100); `opts.refLines` draws dashed reference levels
-// (e.g. RSI's 70/30) colored [sell, buy, ...].
+// lightweight-charts line pane for a Technical Indicator (e.g. RSI).
+// `opts.min`/`opts.max` pin the price scale (RSI is always 0-100);
+// `opts.refLines` draws dotted reference levels (RSI's 70/30) colored
+// [sell, buy, ...]. `opts.expanded` = the big modal view: visible axes,
+// grid, and drag-to-pan / wheel-&-pinch-to-zoom turned on. The compact
+// card view keeps everything off and is registered in `lwCharts` for
+// teardown; the expanded view is owned by the modal and returned raw.
 function buildMiniLineChart(container, points, opts = {}) {
   const LC = window.LightweightCharts;
   if (!LC || typeof LC.createChart !== "function" || !points.length) {
     container.innerHTML = `<p class="hint" style="margin:0;font-size:11px">No data.</p>`;
     return null;
   }
+  const big = !!opts.expanded;
   const muted = cssVar("--muted"), accent = cssVar("--accent"), buy = cssVar("--buy"), sell = cssVar("--sell");
+  const grid = cssVar("--border");
   const chart = LC.createChart(container, {
-    width: container.clientWidth || 200, height: 64,
-    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 9, attributionLogo: false },
-    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-    rightPriceScale: { visible: false },
+    width: container.clientWidth || 200, height: (big ? container.clientHeight : 0) || (big ? 420 : 64),
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: big ? 11 : 9, attributionLogo: false },
+    grid: big
+      ? { vertLines: { color: grid }, horzLines: { color: grid } }
+      : { vertLines: { visible: false }, horzLines: { visible: false } },
+    rightPriceScale: { visible: big, borderColor: grid },
     leftPriceScale: { visible: false },
-    timeScale: { visible: false },
-    handleScroll: false, handleScale: false,
+    timeScale: { visible: big, borderColor: grid },
+    handleScroll: big ? { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } : false,
+    handleScale: big ? { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true } : false,
   });
   const line = chart.addLineSeries({
-    color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
+    color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: big,
     ...(opts.min != null
       ? { autoscaleInfoProvider: () => ({ priceRange: { minValue: opts.min, maxValue: opts.max } }) }
       : {}),
@@ -1764,22 +1820,22 @@ function buildMiniLineChart(container, points, opts = {}) {
   (opts.refLines || []).forEach((v, i) => {
     line.createPriceLine({
       price: v, color: i === 0 ? sell : buy, lineWidth: 1,
-      lineStyle: LC.LineStyle ? LC.LineStyle.Dotted : 1, axisLabelVisible: false,
+      lineStyle: LC.LineStyle ? LC.LineStyle.Dotted : 1, axisLabelVisible: big, title: big ? String(v) : "",
     });
   });
   const ro = new ResizeObserver(() => {
     const w = container.clientWidth;
-    if (w > 0) { chart.applyOptions({ width: w }); chart.timeScale().fitContent(); }
+    if (w > 0) chart.applyOptions({ width: w, height: (big ? container.clientHeight : 64) || 64 });
   });
   ro.observe(container);
   requestAnimationFrame(() => { if (container.clientWidth > 0) chart.timeScale().fitContent(); });
-  lwCharts.push({ chart, el: container, ro });
-  return chart;
+  if (!big) lwCharts.push({ chart, el: container, ro });
+  return { chart, ro };
 }
 
-// Small MACD histogram + line + signal pane for the MACD Technical Indicator
-// card — same idea as buildMiniLineChart but with three series.
-function buildMiniMacdChart(container, series) {
+// MACD histogram + line + signal pane for the MACD Technical Indicator —
+// same compact/expanded split as buildMiniLineChart.
+function buildMiniMacdChart(container, series, opts = {}) {
   const LC = window.LightweightCharts;
   const T = (p) => toChartTime(p.date);
   const histPts = series.filter((p) => p.macd_histogram != null)
@@ -1790,29 +1846,86 @@ function buildMiniMacdChart(container, series) {
     container.innerHTML = `<p class="hint" style="margin:0;font-size:11px">No data.</p>`;
     return null;
   }
+  const big = !!opts.expanded;
   const muted = cssVar("--muted"), accent = cssVar("--accent"), sell = cssVar("--sell");
+  const grid = cssVar("--border");
   const chart = LC.createChart(container, {
-    width: container.clientWidth || 200, height: 64,
-    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: 9, attributionLogo: false },
-    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-    rightPriceScale: { visible: false },
-    timeScale: { visible: false },
-    handleScroll: false, handleScale: false,
+    width: container.clientWidth || 200, height: (big ? container.clientHeight : 0) || (big ? 420 : 64),
+    layout: { background: { type: "solid", color: "transparent" }, textColor: muted, fontSize: big ? 11 : 9, attributionLogo: false },
+    grid: big
+      ? { vertLines: { color: grid }, horzLines: { color: grid } }
+      : { vertLines: { visible: false }, horzLines: { visible: false } },
+    rightPriceScale: { visible: big, borderColor: grid },
+    timeScale: { visible: big, borderColor: grid },
+    handleScroll: big ? { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } : false,
+    handleScale: big ? { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true } : false,
   });
   const hist = chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false, base: 0 });
   hist.setData(histPts);
-  const line = chart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  const line = chart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, lastValueVisible: big });
   line.setData(linePts);
-  const sig = chart.addLineSeries({ color: sell, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  const sig = chart.addLineSeries({ color: sell, lineWidth: 1, priceLineVisible: false, lastValueVisible: big });
   sig.setData(sigPts);
   const ro = new ResizeObserver(() => {
     const w = container.clientWidth;
-    if (w > 0) { chart.applyOptions({ width: w }); chart.timeScale().fitContent(); }
+    if (w > 0) chart.applyOptions({ width: w, height: (big ? container.clientHeight : 64) || 64 });
   });
   ro.observe(container);
   requestAnimationFrame(() => { if (container.clientWidth > 0) chart.timeScale().fitContent(); });
-  lwCharts.push({ chart, el: container, ro });
-  return chart;
+  if (!big) lwCharts.push({ chart, el: container, ro });
+  return { chart, ro };
+}
+
+// ── indicator modal: a big, pannable/zoomable view of RSI or MACD ─────────
+let modalChartHandle = null;   // { chart, ro } for the chart currently in the modal
+
+function closeChartModal() {
+  const modal = $("#chart-modal");
+  if (!modal || modal.hidden) return;
+  if (modalChartHandle) {
+    try { modalChartHandle.ro && modalChartHandle.ro.disconnect(); } catch (_) { /* gone */ }
+    try { modalChartHandle.chart.remove(); } catch (_) { /* gone */ }
+    modalChartHandle = null;
+  }
+  $("#chart-modal-chart").innerHTML = "";
+  modal.hidden = true;
+}
+
+// kind: "rsi" | "macd". ctx = { ticker, series }.
+function openIndicatorModal(kind, ctx) {
+  const modal = $("#chart-modal");
+  const host = $("#chart-modal-chart");
+  if (!modal || !host) return;
+  closeChartModal();                       // tear down any previous one first
+
+  $("#chart-modal-title").textContent =
+    (kind === "rsi" ? "RSI (14)" : "MACD (12/26/9)") + " · " + ctx.ticker;
+  modal.hidden = false;
+
+  // The container only has real dimensions once the modal is shown, so build
+  // on the next frame.
+  requestAnimationFrame(() => {
+    if (kind === "rsi") {
+      modalChartHandle = buildMiniLineChart(
+        host,
+        ctx.series.filter((p) => p.rsi_14 != null).map((p) => ({ time: toChartTime(p.date), value: p.rsi_14 })),
+        { min: 0, max: 100, refLines: [70, 30], expanded: true },
+      );
+    } else {
+      modalChartHandle = buildMiniMacdChart(host, ctx.series, { expanded: true });
+    }
+    if (modalChartHandle) requestAnimationFrame(() => modalChartHandle.chart.timeScale().fitContent());
+  });
+}
+
+function wireChartModal() {
+  const closeBtn = $("#chart-modal-close");
+  const backdrop = $("#chart-modal-backdrop");
+  if (closeBtn) closeBtn.addEventListener("click", closeChartModal);
+  if (backdrop) backdrop.addEventListener("click", closeChartModal);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeChartModal();
+  });
 }
 
 // The 4 compact "Technical Indicators" cards below the main chart: RSI and
@@ -1828,6 +1941,10 @@ function technicalIndicatorsSection(ctx, insightCtl) {
   const wrap = document.createElement("div");
   wrap.className = "tech-grid";
 
+  const expandBtnHTML = `<button type="button" class="tech-expand" title="Expand" aria-label="Expand chart">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+  </button>`;
+
   // RSI
   const rsiVal = last("rsi_14");
   const rsiCard = document.createElement("div");
@@ -1836,12 +1953,14 @@ function technicalIndicatorsSection(ctx, insightCtl) {
     <div class="tech-card-head">
       <span class="tech-card-title">RSI (14)</span>
       <span class="tech-card-value">${rsiVal == null ? "—" : fmtRSI(rsiVal)}</span>
+      ${expandBtnHTML}
     </div>
     <div class="tech-mini" id="tech-mini-rsi-${esc(ctx.ticker)}"></div>`;
   const aiRsi = document.createElement("button");
   aiRsi.type = "button"; aiRsi.className = "ai-link";
   wireAiToggle(aiRsi, RSI_INDICATOR.key, RSI_INDICATOR.label, RSI_INDICATOR.insightName, insightCtl);
   rsiCard.appendChild(aiRsi);
+  rsiCard.querySelector(".tech-expand").addEventListener("click", () => openIndicatorModal("rsi", ctx));
   wrap.appendChild(rsiCard);
   buildMiniLineChart(
     rsiCard.querySelector(`#tech-mini-rsi-${CSS.escape(ctx.ticker)}`),
@@ -1857,12 +1976,14 @@ function technicalIndicatorsSection(ctx, insightCtl) {
     <div class="tech-card-head">
       <span class="tech-card-title">MACD (12/26/9)</span>
       <span class="tech-card-value">${macdLineVal == null ? "—" : macdLineVal.toFixed(2)}</span>
+      ${expandBtnHTML}
     </div>
     <div class="tech-mini" id="tech-mini-macd-${esc(ctx.ticker)}"></div>`;
   const aiMacd = document.createElement("button");
   aiMacd.type = "button"; aiMacd.className = "ai-link";
   wireAiToggle(aiMacd, MACD_INDICATOR.key, MACD_INDICATOR.label, MACD_INDICATOR.insightName, insightCtl);
   macdCard.appendChild(aiMacd);
+  macdCard.querySelector(".tech-expand").addEventListener("click", () => openIndicatorModal("macd", ctx));
   wrap.appendChild(macdCard);
   buildMiniMacdChart(macdCard.querySelector(`#tech-mini-macd-${CSS.escape(ctx.ticker)}`), series);
 
@@ -2369,6 +2490,7 @@ $("#ticker-search").addEventListener("keydown", (e) => {
 
 wireAppRail();
 wireChartToolbar();
+wireChartModal();
 wireHeaderSearch();
 renderWatchlist();
 renderAgent3();
