@@ -2108,33 +2108,57 @@ function wireChartModal() {
   });
 }
 
+// ── indicator signal backtests ─────────────────────────────────────────────
+// Generic long-only walk over the loaded bars: enter when `enter(prev,cur)` is
+// true and flat, exit when `exit(prev,cur)` is true and long (or mark-to-last-
+// close at the end). A trade is a "win" if the exit beats the entry. `need`
+// lists the price_history fields every bar must have. Small-sample and
+// in-sample — it describes the loaded window, it is not a forward edge.
+function backtestRule(series, need, enter, exit) {
+  const bars = (series || []).filter((p) => p.close != null && need.every((f) => p[f] != null));
+  const rets = [];
+  let entry = null, prev = null;
+  for (const cur of bars) {
+    if (prev) {
+      if (entry == null && enter(prev, cur)) entry = cur.close;
+      else if (entry != null && exit(prev, cur)) { rets.push((cur.close / entry - 1) * 100); entry = null; }
+    }
+    prev = cur;
+  }
+  let open = false;
+  if (entry != null && bars.length) { rets.push((bars[bars.length - 1].close / entry - 1) * 100); open = true; }
+  const n = rets.length, wins = rets.filter((r) => r > 0).length;
+  return { n, wins, open, bars: bars.length, winRate: n ? wins / n : null, avg: n ? rets.reduce((a, r) => a + r, 0) / n : 0 };
+}
+
+// One entry/exit rule per indicator card. `x` is the exit-cross helper.
+const _xUp = (f, lvl) => (p, c) => p[f] < lvl && c[f] >= lvl;
+const _xDown = (f, lvl) => (p, c) => p[f] > lvl && c[f] <= lvl;
+const _crossAbove = (a, b) => (p, c) => p[a] <= p[b] && c[a] > c[b];
+const _crossBelow = (a, b) => (p, c) => p[a] >= p[b] && c[a] < c[b];
+const SIGNAL_RULES = {
+  rsi:   { label: "RSI 30/70 rule",     need: ["rsi_14"], enter: (p, c) => c.rsi_14 < 30, exit: (p, c) => c.rsi_14 > 70 },
+  macd:  { label: "MACD crossover",     need: ["macd_line", "signal_line"], enter: _crossAbove("macd_line", "signal_line"), exit: _crossBelow("macd_line", "signal_line") },
+  stoch: { label: "Stoch 20/80 cross",  need: ["stoch_k"], enter: _xUp("stoch_k", 20), exit: _xDown("stoch_k", 80) },
+  bb:    { label: "Bollinger bounce",   need: ["bb_lower", "bb_middle"], enter: (p, c) => c.close < c.bb_lower, exit: (p, c) => c.close > c.bb_middle },
+  ema:   { label: "EMA 9/20 cross",     need: ["ema_9", "ema_20"], enter: _crossAbove("ema_9", "ema_20"), exit: _crossBelow("ema_9", "ema_20") },
+};
+
+// The `.tech-backtest` line for one card: "<label> · N trades · W% win · +X% avg".
+function backtestLine(series, key) {
+  const r = SIGNAL_RULES[key];
+  const bt = backtestRule(series, r.need, r.enter, r.exit);
+  if (bt.n === 0) {
+    return `<div class="tech-backtest" title="No ${esc(r.label)} entry fired in the ${bt.bars} loaded bars — try a longer timeframe.">${esc(r.label)} · no trades in ${bt.bars} bars</div>`;
+  }
+  const t = `Long-only backtest of the ${esc(r.label)} over the ${bt.bars} loaded bars${bt.open ? "; the last trade is still open, marked to the latest close" : ""}. In-sample — a description of this window, not a predictive edge. Switch the timeframe for more trades.`;
+  return `<div class="tech-backtest" title="${t}">${esc(r.label)} · <b>${bt.n}</b> trade${bt.n === 1 ? "" : "s"} · <b>${Math.round(bt.winRate * 100)}%</b> win · <b>${bt.avg >= 0 ? "+" : ""}${bt.avg.toFixed(1)}%</b> avg</div>`;
+}
+
 // The 4 compact "Technical Indicators" cards below the main chart: RSI and
 // MACD mini-charts (each with its own AI-insight toggle, sharing insightCtl
 // with the indicator dropdown), plus text-stat readouts for the moving
 // averages and Bollinger Bands already drawn as overlays on the main chart.
-// Quick in-sample backtest of the textbook RSI mean-reversion rule over the
-// bars currently loaded: go long the first time RSI closes below 30, exit when
-// it next closes above 70 (or mark-to-last-close at the end). A trade is a
-// "win" if the exit price beats the entry. Small-sample and in-sample — this
-// is a description of the loaded window, not a forward-looking edge.
-function rsiBacktest(series) {
-  const bars = (series || []).filter((p) => p.rsi_14 != null && p.close != null);
-  const rets = [];
-  let entry = null;
-  for (const b of bars) {
-    if (entry == null && b.rsi_14 < 30) entry = b.close;
-    else if (entry != null && b.rsi_14 > 70) { rets.push((b.close / entry - 1) * 100); entry = null; }
-  }
-  let open = false;
-  if (entry != null && bars.length) { rets.push((bars[bars.length - 1].close / entry - 1) * 100); open = true; }
-  const n = rets.length;
-  const wins = rets.filter((r) => r > 0).length;
-  return {
-    n, wins, open, bars: bars.length,
-    winRate: n ? wins / n : null,
-    avg: n ? rets.reduce((a, r) => a + r, 0) / n : 0,
-  };
-}
 
 function technicalIndicatorsSection(ctx, insightCtl) {
   const series = ctx.series;
@@ -2151,10 +2175,6 @@ function technicalIndicatorsSection(ctx, insightCtl) {
 
   // RSI
   const rsiVal = last("rsi_14");
-  const bt = rsiBacktest(series);
-  const btLine = bt.n === 0
-    ? `<div class="tech-backtest" title="No RSI-below-30 entry occurred in the ${bt.bars} loaded bars. Try a longer timeframe.">RSI 30/70 rule · no trades in ${bt.bars} bars</div>`
-    : `<div class="tech-backtest" title="Textbook rule: go long when RSI closes below 30, exit when it closes above 70${bt.open ? "; the last trade is still open and marked to the latest close" : ""}. In-sample over the ${bt.bars} loaded bars — a description of this window, not a predictive edge. Switch the timeframe for more trades.">RSI 30/70 rule · <b>${bt.n}</b> trade${bt.n === 1 ? "" : "s"} · <b>${Math.round(bt.winRate * 100)}%</b> win · <b>${bt.avg >= 0 ? "+" : ""}${bt.avg.toFixed(1)}%</b> avg</div>`;
   const rsiCard = document.createElement("div");
   rsiCard.className = "tech-card";
   rsiCard.innerHTML = `
@@ -2164,7 +2184,7 @@ function technicalIndicatorsSection(ctx, insightCtl) {
       ${expandBtnHTML}
     </div>
     <div class="tech-mini" id="tech-mini-rsi-${esc(ctx.ticker)}"></div>
-    ${btLine}`;
+    ${backtestLine(series, "rsi")}`;
   const aiRsi = document.createElement("button");
   aiRsi.type = "button"; aiRsi.className = "ai-link";
   wireAiToggle(aiRsi, RSI_INDICATOR.key, RSI_INDICATOR.label, RSI_INDICATOR.insightName, insightCtl);
@@ -2187,7 +2207,8 @@ function technicalIndicatorsSection(ctx, insightCtl) {
       <span class="tech-card-value">${macdLineVal == null ? "—" : macdLineVal.toFixed(2)}</span>
       ${expandBtnHTML}
     </div>
-    <div class="tech-mini" id="tech-mini-macd-${esc(ctx.ticker)}"></div>`;
+    <div class="tech-mini" id="tech-mini-macd-${esc(ctx.ticker)}"></div>
+    ${backtestLine(series, "macd")}`;
   const aiMacd = document.createElement("button");
   aiMacd.type = "button"; aiMacd.className = "ai-link";
   wireAiToggle(aiMacd, MACD_INDICATOR.key, MACD_INDICATOR.label, MACD_INDICATOR.insightName, insightCtl);
@@ -2207,7 +2228,8 @@ function technicalIndicatorsSection(ctx, insightCtl) {
       <span class="tech-card-value">${kVal == null ? "—" : kVal.toFixed(1)}${stochTag}</span>
       ${expandBtnHTML}
     </div>
-    <div class="tech-mini" id="tech-mini-stoch-${esc(ctx.ticker)}"></div>`;
+    <div class="tech-mini" id="tech-mini-stoch-${esc(ctx.ticker)}"></div>
+    ${backtestLine(series, "stoch")}`;
   const aiStoch = document.createElement("button");
   aiStoch.type = "button"; aiStoch.className = "ai-link";
   wireAiToggle(aiStoch, STOCH_INDICATOR.key, STOCH_INDICATOR.label, STOCH_INDICATOR.insightName, insightCtl);
@@ -2253,7 +2275,8 @@ function technicalIndicatorsSection(ctx, insightCtl) {
     ${maRow("var(--ink)", "MA-50", last("ma_50"))}
     ${maRow("var(--muted)", "MA-200", last("ma_200"))}
     ${maRow("var(--ema-fast)", "EMA-9", last("ema_9"))}
-    ${maRow("var(--ema)", "EMA-20", last("ema_20"))}`;
+    ${maRow("var(--ema)", "EMA-20", last("ema_20"))}
+    ${backtestLine(series, "ema")}`;
   wrap.appendChild(maCard);
 
   // Bollinger Bands (text stats — already toggleable as a chart overlay)
@@ -2265,7 +2288,8 @@ function technicalIndicatorsSection(ctx, insightCtl) {
     <div class="tech-card-head"><span class="tech-card-title">Bollinger Bands</span></div>
     ${bbRow("Upper", last("bb_upper"))}
     ${bbRow("Middle", last("bb_middle"))}
-    ${bbRow("Lower", last("bb_lower"))}`;
+    ${bbRow("Lower", last("bb_lower"))}
+    ${backtestLine(series, "bb")}`;
   wrap.appendChild(bbCard);
 
   return wrap;
