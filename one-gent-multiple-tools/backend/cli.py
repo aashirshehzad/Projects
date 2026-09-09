@@ -29,7 +29,14 @@ def main() -> None:
         if not msg:
             continue
 
-        result = agent.run(msg, history)
+        try:
+            result = agent.run(msg, history)
+        except RuntimeError as exc:
+            print(f"\n[error] {exc}\n")
+            continue
+        except Exception as exc:  # noqa: BLE001
+            print(f"\n[error] {type(exc).__name__}: {exc}\n")
+            continue
         for step in result["steps"]:
             print(f"  · {step['tool']}({step['args']})")
         print(f"\nbot > {result['reply']}\n")

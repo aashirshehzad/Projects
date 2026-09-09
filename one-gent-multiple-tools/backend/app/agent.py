@@ -51,7 +51,18 @@ class Agent:
                 "and add your key from https://aistudio.google.com/apikey"
             )
         self.client = genai.Client(api_key=api_key)
-        self.model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self.model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+
+    def available_models(self) -> list[str]:
+        """Model ids on this key that can run generateContent (for error messages / debugging)."""
+        out = []
+        try:
+            for m in self.client.models.list():
+                if "generateContent" in (getattr(m, "supported_actions", None) or []):
+                    out.append((m.name or "").removeprefix("models/"))
+        except Exception:  # noqa: BLE001
+            pass
+        return sorted(out)
 
     def _config(self) -> types.GenerateContentConfig:
         return types.GenerateContentConfig(
@@ -60,6 +71,22 @@ class Agent:
             temperature=0.2,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
+
+    def _generate(self, contents: list[types.Content]):
+        try:
+            return self.client.models.generate_content(
+                model=self.model, contents=contents, config=self._config()
+            )
+        except Exception as exc:  # noqa: BLE001
+            msg = str(exc).lower()
+            if "not found" in msg or "404" in msg or "not supported" in msg:
+                models = self.available_models()
+                hint = f" Available models on this key: {', '.join(models)}" if models else ""
+                raise RuntimeError(
+                    f"Model '{self.model}' is not available. Set GEMINI_MODEL in backend/.env "
+                    f"to a valid id.{hint}"
+                ) from exc
+            raise
 
     def run(self, message: str, history: list[dict] | None = None) -> dict:
         contents: list[types.Content] = []
@@ -72,9 +99,7 @@ class Agent:
 
         steps: list[dict] = []
         for _ in range(MAX_STEPS):
-            response = self.client.models.generate_content(
-                model=self.model, contents=contents, config=self._config()
-            )
+            response = self._generate(contents)
 
             candidate = response.candidates[0] if response.candidates else None
             parts = candidate.content.parts if candidate and candidate.content else []
@@ -98,9 +123,7 @@ class Agent:
                 )
 
         # Ran out of steps - ask for a final answer with what we have.
-        response = self.client.models.generate_content(
-            model=self.model, contents=contents, config=self._config()
-        )
+        response = self._generate(contents)
         return {"reply": (response.text or "").strip(), "steps": steps, "model": self.model}
 
 

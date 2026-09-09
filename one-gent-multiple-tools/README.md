@@ -82,7 +82,8 @@ Open <http://localhost:5173>.
 
 `backend/app/agent.py` runs a manual function-calling loop:
 
-1. Send the conversation + all tool declarations to Gemini.
+1. Send the conversation + all tool declarations to Gemini (`GEMINI_MODEL`,
+   default `gemini-3.5-flash-lite` — run `python -m app.list_models` to see valid ids).
 2. If the reply contains `function_call` parts, run those tools and feed the results back.
 3. Repeat (up to `MAX_STEPS = 6`) until Gemini returns plain text — that's the answer.
 
