@@ -1,40 +1,146 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
+import { meta, SUGGESTIONS } from "./tools.js";
 
-const SUGGESTIONS = [
-  "What's the weather in Lahore right now?",
-  "Price of TSLA and how it changed today",
-  "Convert 120 USD to PKR",
-  "sqrt(2) * 45 + 17^2",
-  "Give me a 2-line summary of the Eiffel Tower",
-  "What time is it in Tokyo?",
-  "Define 'serendipity'",
-  "Latest news about electric vehicles",
-];
+marked.setOptions({ breaks: true, gfm: true });
+
+function Markdown({ text }) {
+  const html = useMemo(
+    () => DOMPurify.sanitize(marked.parse(text || "")),
+    [text]
+  );
+  return <div className="md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function Logo() {
+  return (
+    <svg className="logo" viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#6366f1" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#lg)" />
+      <circle cx="16" cy="16" r="4.4" fill="#fff" />
+      <g fill="#fff">
+        <circle cx="16" cy="5.4" r="2.1" />
+        <circle cx="16" cy="26.6" r="2.1" />
+        <circle cx="5.4" cy="16" r="2.1" />
+        <circle cx="26.6" cy="16" r="2.1" />
+      </g>
+      <g stroke="#fff" strokeWidth="1.6" opacity="0.9">
+        <line x1="16" y1="11.6" x2="16" y2="7.5" />
+        <line x1="16" y1="20.4" x2="16" y2="24.5" />
+        <line x1="11.6" y1="16" x2="7.5" y2="16" />
+        <line x1="20.4" y1="16" x2="24.5" y2="16" />
+      </g>
+    </svg>
+  );
+}
+
+function ToolStep({ step }) {
+  const [open, setOpen] = useState(false);
+  const m = meta(step.tool);
+  const failed = step.result && step.result.error;
+  const args = Object.entries(step.args || {});
+  return (
+    <div className={`step ${failed ? "failed" : ""}`}>
+      <button className="step-head" onClick={() => setOpen((v) => !v)}>
+        <span className="step-icon" style={{ background: m.accent + "22" }}>
+          {m.icon}
+        </span>
+        <span className="step-name">{step.tool}</span>
+        <span className="step-args">
+          {args.map(([k, v]) => (
+            <span className="pill" key={k}>
+              <b>{k}</b> {String(v)}
+            </span>
+          ))}
+        </span>
+        <span className={`chev ${open ? "up" : ""}`}>›</span>
+      </button>
+      {open && (
+        <pre className="step-body">{JSON.stringify(step.result, null, 2)}</pre>
+      )}
+    </div>
+  );
+}
+
+function Message({ m }) {
+  if (m.role === "user") {
+    return (
+      <div className="row user">
+        <div className="bubble user">{m.content}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="row agent">
+      <div className="avatar">
+        <Logo />
+      </div>
+      <div className="agent-col">
+        {m.steps?.length > 0 && (
+          <div className="steps">
+            {m.steps.map((s, i) => (
+              <ToolStep step={s} key={i} />
+            ))}
+          </div>
+        )}
+        <div className="bubble agent">
+          <Markdown text={m.content} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [tools, setTools] = useState([]);
+  const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
+  const [navOpen, setNavOpen] = useState(false);
   const scroller = useRef(null);
+  const ta = useRef(null);
 
   useEffect(() => {
     fetch("/api/tools")
       .then((r) => r.json())
       .then((d) => setTools(d.tools || []))
       .catch(() => {});
+    const ping = () =>
+      fetch("/api/health")
+        .then((r) => r.json())
+        .then(setHealth)
+        .catch(() => setHealth({ status: "down" }));
+    ping();
+    const id = setInterval(ping, 20000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
-    scroller.current?.scrollTo(0, scroller.current.scrollHeight);
+    const el = scroller.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
+
+  function autosize() {
+    const el = ta.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 180) + "px";
+  }
 
   async function send(text) {
     const content = (text ?? input).trim();
     if (!content || busy) return;
     setError("");
     setInput("");
+    requestAnimationFrame(autosize);
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     const next = [...messages, { role: "user", content }];
@@ -48,7 +154,7 @@ export default function App() {
         body: JSON.stringify({ message: content, history }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Request failed");
+      if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
       setMessages([
         ...next,
         { role: "assistant", content: data.reply, steps: data.steps || [] },
@@ -61,98 +167,184 @@ export default function App() {
     }
   }
 
+  function onKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  }
+
+  const online = health?.status === "ok";
+  const model = health?.model || "gemini";
+
   return (
     <div className="app">
-      <aside className="sidebar">
-        <h1>
-          One Agent<br />
-          <span>· many tools</span>
-        </h1>
-        <p className="blurb">
-          A single Gemini-powered agent that decides which tool to call for each
-          question.
-        </p>
-        <h2>Tools it can use</h2>
-        <ul className="toollist">
-          {tools.map((t) => (
-            <li key={t.name}>
-              <code>{t.name}</code>
-              <span>{t.description}</span>
-            </li>
-          ))}
-          {tools.length === 0 && <li className="muted">Start the backend to load tools…</li>}
-        </ul>
-      </aside>
-
-      <main className="chat">
-        <div className="messages" ref={scroller}>
-          {messages.length === 0 && (
-            <div className="empty">
-              <p>Ask me something. Try:</p>
-              <div className="chips">
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => send(s)}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {messages.map((m, i) => (
-            <div key={i} className={`msg ${m.role}`}>
-              <div className="role">{m.role === "user" ? "You" : "Agent"}</div>
-              {m.steps?.length > 0 && (
-                <div className="steps">
-                  {m.steps.map((s, j) => (
-                    <details key={j}>
-                      <summary>
-                        🔧 {s.tool}
-                        <span className="args">({fmtArgs(s.args)})</span>
-                      </summary>
-                      <pre>{JSON.stringify(s.result, null, 2)}</pre>
-                    </details>
-                  ))}
-                </div>
-              )}
-              <div className="bubble">{m.content}</div>
-            </div>
-          ))}
-
-          {busy && (
-            <div className="msg assistant">
-              <div className="role">Agent</div>
-              <div className="bubble typing">thinking…</div>
-            </div>
-          )}
+      <aside className={`sidebar ${navOpen ? "open" : ""}`}>
+        <div className="brand">
+          <Logo />
+          <div>
+            <div className="brand-name">One Agent</div>
+            <div className="brand-sub">many tools</div>
+          </div>
         </div>
 
-        {error && <div className="error">{error}</div>}
+        <p className="blurb">
+          One Gemini agent that reads your question and calls the right tool —
+          or several — to answer it.
+        </p>
 
-        <form
-          className="composer"
-          onSubmit={(e) => {
-            e.preventDefault();
-            send();
-          }}
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about weather, stocks, math, time, news…"
-            disabled={busy}
-          />
-          <button type="submit" disabled={busy || !input.trim()}>
-            Send
+        <div className="side-label">
+          Tools <span className="count">{tools.length}</span>
+        </div>
+        <ul className="toollist">
+          {tools.map((t) => {
+            const m = meta(t.name);
+            return (
+              <li key={t.name}>
+                <span className="ti" style={{ background: m.accent + "22" }}>
+                  {m.icon}
+                </span>
+                <span className="tinfo">
+                  <code>{t.name}</code>
+                  <span>{t.description}</span>
+                </span>
+              </li>
+            );
+          })}
+          {tools.length === 0 && (
+            <li className="muted">Waiting for the backend on :8000…</li>
+          )}
+        </ul>
+
+        <div className={`status ${online ? "ok" : "bad"}`}>
+          <span className="dot" />
+          {online ? (
+            <>
+              Connected · <code>{model}</code>
+            </>
+          ) : (
+            "Backend offline"
+          )}
+        </div>
+      </aside>
+
+      <div
+        className={`scrim ${navOpen ? "show" : ""}`}
+        onClick={() => setNavOpen(false)}
+      />
+
+      <main className="chat">
+        <header className="topbar">
+          <button className="hamburger" onClick={() => setNavOpen((v) => !v)}>
+            ☰
           </button>
-        </form>
+          <div className="topbar-title">
+            <Logo />
+            <span>One Agent · Many Tools</span>
+          </div>
+          <div className="topbar-right">
+            {messages.length > 0 && (
+              <button className="ghost" onClick={() => setMessages([])}>
+                Clear
+              </button>
+            )}
+            <span className={`ping ${online ? "ok" : "bad"}`} title={model}>
+              <span className="dot" />
+              {online ? model : "offline"}
+            </span>
+          </div>
+        </header>
+
+        <div className="messages" ref={scroller}>
+          <div className="messages-inner">
+            {messages.length === 0 ? (
+              <div className="hero">
+                <div className="hero-mark">
+                  <Logo />
+                </div>
+                <h1>What can I look up for you?</h1>
+                <p>
+                  Weather, live stock &amp; crypto prices, currency &amp; unit
+                  conversion, math, Wikipedia, web search, world clocks, word
+                  definitions and the news — all through one agent.
+                </p>
+                <div className="cards">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s.text}
+                      className="card"
+                      onClick={() => send(s.text)}
+                    >
+                      <span className="card-ic">{s.icon}</span>
+                      <span>{s.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              messages.map((m, i) => <Message m={m} key={i} />)
+            )}
+
+            {busy && (
+              <div className="row agent">
+                <div className="avatar">
+                  <Logo />
+                </div>
+                <div className="bubble agent thinking">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="error">
+            <b>Error:</b> {error}
+          </div>
+        )}
+
+        <div className="composer-wrap">
+          <form
+            className="composer"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+          >
+            <textarea
+              ref={ta}
+              value={input}
+              rows={1}
+              onChange={(e) => {
+                setInput(e.target.value);
+                autosize();
+              }}
+              onKeyDown={onKey}
+              placeholder="Ask anything — e.g. “weather in Karachi and the price of BTC in PKR”"
+              disabled={busy}
+            />
+            <button
+              type="submit"
+              className="send"
+              disabled={busy || !input.trim()}
+              aria-label="Send"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a1 1 0 00-1.39 1.17L4 11l12 1-12 1-1.98 6.23a1 1 0 001.38 1.17z"
+                />
+              </svg>
+            </button>
+          </form>
+          <div className="composer-hint">
+            Enter to send · Shift+Enter for a new line
+          </div>
+        </div>
       </main>
     </div>
   );
-}
-
-function fmtArgs(args) {
-  return Object.entries(args || {})
-    .map(([k, v]) => `${k}: ${v}`)
-    .join(", ");
 }

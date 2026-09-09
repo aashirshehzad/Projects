@@ -48,7 +48,12 @@ class ChatRequest(BaseModel):
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "key_configured": bool(os.environ.get("GEMINI_API_KEY"))}
+    key = os.environ.get("GEMINI_API_KEY", "")
+    return {
+        "status": "ok",
+        "key_configured": bool(key) and not key.startswith("paste-"),
+        "model": os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
+    }
 
 
 @app.get("/api/tools")
