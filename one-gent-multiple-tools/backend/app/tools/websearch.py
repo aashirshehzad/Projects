@@ -1,11 +1,16 @@
-"""Lightweight keyless web search via the DuckDuckGo Instant Answer API.
+"""Keyless web search.
 
-Note: this returns instant-answer / related-topic results, not a full SERP.
-Swap in a paid search API here if you need deeper results.
+Tries the DuckDuckGo Instant Answer API first (fast, structured), then falls
+back to scraping the DuckDuckGo HTML endpoint for real result snippets.
+Swap in a paid search API here if you need production-grade results.
 """
 from __future__ import annotations
 
-from ._http import get_json
+import html
+import re
+from urllib.parse import parse_qs, unquote, urlparse
+
+from ._http import get_json, get_text
 
 DECLARATION = {
     "name": "web_search",
@@ -22,36 +27,74 @@ DECLARATION = {
     },
 }
 
-
-def _walk_topics(topics: list, out: list, limit: int) -> None:
-    for t in topics:
-        if len(out) >= limit:
-            return
-        if "Topics" in t:
-            _walk_topics(t["Topics"], out, limit)
-        elif t.get("Text"):
-            out.append({"snippet": t["Text"], "url": t.get("FirstURL")})
+_TAGS = re.compile(r"<[^>]+>")
+_LINK = re.compile(r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', re.S)
+_SNIP = re.compile(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', re.S)
 
 
-def run(query: str) -> dict:
+def _clean(raw: str) -> str:
+    return html.unescape(_TAGS.sub("", raw)).strip()
+
+
+def _real_url(href: str) -> str:
+    if href.startswith("//"):
+        href = "https:" + href
+    q = parse_qs(urlparse(href).query)
+    return unquote(q["uddg"][0]) if "uddg" in q else href
+
+
+def _instant_answers(query: str) -> list:
     data = get_json(
         "https://api.duckduckgo.com/",
         {"q": query, "format": "json", "no_html": 1, "no_redirect": 1, "skip_disambig": 1},
     )
-
-    results: list = []
+    out: list = []
     if data.get("AbstractText"):
-        results.append({
+        out.append({
             "snippet": data["AbstractText"],
             "url": data.get("AbstractURL"),
             "source": data.get("AbstractSource"),
         })
-    _walk_topics(data.get("RelatedTopics", []), results, limit=6)
+
+    def walk(topics: list) -> None:
+        for t in topics:
+            if len(out) >= 6:
+                return
+            if "Topics" in t:
+                walk(t["Topics"])
+            elif t.get("Text"):
+                out.append({"snippet": t["Text"], "url": t.get("FirstURL")})
+
+    walk(data.get("RelatedTopics", []))
+    return out
+
+
+def _html_results(query: str) -> list:
+    page = get_text("https://html.duckduckgo.com/html/", {"q": query})
+    links = _LINK.findall(page)
+    snips = _SNIP.findall(page)
+    out = []
+    for i, (href, title) in enumerate(links[:6]):
+        out.append({
+            "title": _clean(title),
+            "url": _real_url(href),
+            "snippet": _clean(snips[i]) if i < len(snips) else None,
+        })
+    return out
+
+
+def run(query: str) -> dict:
+    try:
+        results = _instant_answers(query)
+    except Exception:  # noqa: BLE001
+        results = []
 
     if not results:
-        return {
-            "query": query,
-            "results": [],
-            "note": "No instant-answer results. Try rephrasing or use wikipedia_lookup / get_news.",
-        }
+        try:
+            results = _html_results(query)
+        except Exception as exc:  # noqa: BLE001
+            return {"query": query, "results": [], "note": f"search failed: {exc}"}
+
+    if not results:
+        return {"query": query, "results": [], "note": "No results found."}
     return {"query": query, "results": results}

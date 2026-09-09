@@ -56,19 +56,22 @@ def _c_to_temp(v: float, u: str) -> float:
 
 
 def _currency(value: float, frm: str, to: str) -> dict:
-    data = get_json(
-        "https://api.frankfurter.app/latest",
-        {"amount": value, "from": frm.upper(), "to": to.upper()},
-    )
+    frm, to = frm.upper(), to.upper()
+    # open.er-api.com is keyless and covers ~160 currencies (incl. PKR).
+    data = get_json(f"https://open.er-api.com/v6/latest/{frm}")
+    if data.get("result") != "success":
+        return {"error": f"Unsupported base currency '{frm}'."}
     rates = data.get("rates") or {}
-    if to.upper() not in rates:
-        return {"error": f"Unsupported currency pair {frm.upper()}->{to.upper()}."}
+    if to not in rates:
+        return {"error": f"Unsupported currency '{to}'."}
     return {
         "value": value,
-        "from": frm.upper(),
-        "to": to.upper(),
-        "result": rates[to.upper()],
-        "rate_date": data.get("date"),
+        "from": frm,
+        "to": to,
+        "result": round(value * rates[to], 4),
+        "rate": rates[to],
+        "rate_date": data.get("time_last_update_utc"),
+        "kind": "currency",
     }
 
 
