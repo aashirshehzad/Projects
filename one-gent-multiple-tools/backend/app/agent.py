@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import re
+import time
 from typing import Any
 
 from google import genai
@@ -73,20 +75,38 @@ class Agent:
         )
 
     def _generate(self, contents: list[types.Content]):
-        try:
-            return self.client.models.generate_content(
-                model=self.model, contents=contents, config=self._config()
-            )
-        except Exception as exc:  # noqa: BLE001
-            msg = str(exc).lower()
-            if "not found" in msg or "404" in msg or "not supported" in msg:
-                models = self.available_models()
-                hint = f" Available models on this key: {', '.join(models)}" if models else ""
-                raise RuntimeError(
-                    f"Model '{self.model}' is not available. Set GEMINI_MODEL in backend/.env "
-                    f"to a valid id.{hint}"
-                ) from exc
-            raise
+        for attempt in range(3):
+            try:
+                return self.client.models.generate_content(
+                    model=self.model, contents=contents, config=self._config()
+                )
+            except Exception as exc:  # noqa: BLE001
+                msg = str(exc)
+                low = msg.lower()
+
+                if "not found" in low or "404" in low or "not supported" in low:
+                    models = self.available_models()
+                    hint = f" Available models: {', '.join(models)}" if models else ""
+                    raise RuntimeError(
+                        f"Model '{self.model}' is not available. Set GEMINI_MODEL in "
+                        f"backend/.env to a valid id.{hint}"
+                    ) from exc
+
+                if ("429" in low or "resource_exhausted" in low) and attempt < 2:
+                    m = re.search(r"retry in ([\d.]+)s", msg) or re.search(
+                        r"retryDelay['\"]?:\s*['\"]?(\d+)", msg
+                    )
+                    delay = min(float(m.group(1)) + 1, 30) if m else 20.0
+                    time.sleep(delay)
+                    continue
+
+                if "429" in low or "resource_exhausted" in low:
+                    raise RuntimeError(
+                        f"Gemini rate limit hit for model '{self.model}'. The free tier allows "
+                        "only a few requests per minute - wait a minute or use a paid key."
+                    ) from exc
+                raise
+        raise RuntimeError("Gemini request failed after retries.")
 
     def run(self, message: str, history: list[dict] | None = None) -> dict:
         contents: list[types.Content] = []
