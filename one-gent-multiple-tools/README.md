@@ -41,11 +41,18 @@ Only **Gemini** needs an API key.
 
 ```bash
 cd backend
-python -m venv .venv
-.venv\Scripts\activate        # Windows PowerShell:  .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env         # then edit .env and paste your GEMINI_API_KEY
 ```
+
+Use whatever Python 3.11+ you like. With the existing conda env:
+
+```bash
+conda activate oneagentmulti
+pip install -r requirements.txt
+```
+
+Or a plain venv: `python -m venv .venv` then `.venv\Scripts\Activate.ps1`.
 
 Get a free key at <https://aistudio.google.com/apikey>.
 
