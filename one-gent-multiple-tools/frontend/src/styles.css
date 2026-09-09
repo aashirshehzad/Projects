@@ -568,6 +568,88 @@ button {
   white-space: pre;
 }
 
+/* email-this button */
+.email-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.email-row.done {
+  color: #16a34a;
+  font-weight: 500;
+}
+.email-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-soft);
+  border-radius: 9px;
+  padding: 5px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.email-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.email-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.email-form input {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  min-width: 190px;
+}
+.email-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.email-send {
+  border: 0;
+  background: var(--user-bubble);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.email-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.email-cancel {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+.email-cancel:hover {
+  color: var(--text);
+}
+.email-err {
+  color: var(--danger);
+  font-size: 12px;
+  flex-basis: 100%;
+}
+
 /* thinking */
 .bubble.agent.thinking {
   display: flex;

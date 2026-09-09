@@ -68,7 +68,109 @@ function ToolStep({ step }) {
   );
 }
 
-function Message({ m }) {
+function GmailIcon() {
+  return (
+    <svg viewBox="0 0 48 48" width="15" height="15" aria-hidden="true">
+      <path fill="#4285F4" d="M6 12v24a2 2 0 002 2h6V21l10 7.4L34 21v17h6a2 2 0 002-2V12L24 25.4z" />
+      <path fill="#34A853" d="M6 12v24a2 2 0 002 2h6V21z" />
+      <path fill="#FBBC04" d="M34 21v17h6a2 2 0 002-2V12z" />
+      <path fill="#EA4335" d="M6 12l18 13.4L42 12a3 3 0 00-3-3H9a3 3 0 00-3 3z" />
+    </svg>
+  );
+}
+
+function EmailButton({ question, answer, enabled }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem("oa_email") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [status, setStatus] = useState(null); // null | "sending" | "sent" | error text
+
+  if (!enabled) return null;
+
+  if (status === "sent") {
+    return (
+      <div className="email-row done">
+        <GmailIcon /> Emailed to {email}
+      </div>
+    );
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    const to = email.trim();
+    if (!to) return;
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, question, answer }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `Failed (${res.status})`);
+      try {
+        localStorage.setItem("oa_email", to);
+      } catch {}
+      setStatus("sent");
+    } catch (err) {
+      setStatus(err.message);
+    }
+  }
+
+  return (
+    <div className="email-row">
+      {!open ? (
+        <button
+          className="email-btn"
+          onClick={() => {
+            setOpen(true);
+            setStatus(null);
+          }}
+        >
+          <GmailIcon /> Email this
+        </button>
+      ) : (
+        <form className="email-form" onSubmit={submit}>
+          <input
+            type="email"
+            required
+            autoFocus
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="email-send"
+            disabled={status === "sending" || !email.trim()}
+          >
+            {status === "sending" ? "Sending…" : "Send"}
+          </button>
+          <button
+            type="button"
+            className="email-cancel"
+            onClick={() => {
+              setOpen(false);
+              setStatus(null);
+            }}
+          >
+            Cancel
+          </button>
+          {status && status !== "sending" && (
+            <span className="email-err">{status}</span>
+          )}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Message({ m, question, emailEnabled }) {
   if (m.role === "user") {
     return (
       <div className="row user">
@@ -92,6 +194,13 @@ function Message({ m }) {
         <div className="bubble agent">
           <Markdown text={m.content} />
         </div>
+        {m.content && (
+          <EmailButton
+            question={question}
+            answer={m.content}
+            enabled={emailEnabled}
+          />
+        )}
       </div>
     </div>
   );
@@ -282,7 +391,14 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              messages.map((m, i) => <Message m={m} key={i} />)
+              messages.map((m, i) => (
+                <Message
+                  m={m}
+                  key={i}
+                  question={messages[i - 1]?.content || ""}
+                  emailEnabled={health?.email_enabled}
+                />
+              ))
             )}
 
             {busy && (
