@@ -9,6 +9,7 @@ export const TOOL_META = {
   get_current_time: { icon: "🕐", label: "Time", accent: "#f472b6" },
   define_word: { icon: "📝", label: "Dictionary", accent: "#2dd4bf" },
   get_news: { icon: "📰", label: "News", accent: "#fb923c" },
+  send_email: { icon: "✉️", label: "Email", accent: "#f87171" },
 };
 
 export const meta = (name) =>
@@ -21,4 +22,5 @@ export const SUGGESTIONS = [
   { icon: "📖", text: "Give me a 2-line summary of the Eiffel Tower" },
   { icon: "🕐", text: "What time is it in Tokyo and New York?" },
   { icon: "📰", text: "Latest news about electric vehicles" },
+  { icon: "✉️", text: "Email today's weather for Karachi to me at name@example.com" },
 ];

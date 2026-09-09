@@ -19,21 +19,22 @@ adding a separate Node backend would just be a proxy in front of Python with no 
 The **frontend is React (Vite)**. In dev, Vite proxies `/api/*` to FastAPI, so there is no
 CORS setup to worry about.
 
-## The 9 tools
+## The 10 tools
 
-| Tool | What it does | Data source (all keyless) |
-|------|--------------|---------------------------|
-| `get_weather` | current temp / wind / conditions for a city | Open-Meteo |
-| `get_stock_price` | latest price + daily change for a ticker | Stooq CSV |
+| Tool | What it does | Data source |
+|------|--------------|-------------|
+| `get_weather` | current temp / wind / conditions for a city | Open-Meteo (keyless) |
+| `get_stock_price` | latest price + daily change for a ticker / index / crypto | Yahoo Finance (keyless) |
 | `calculator` | safe math expression evaluator (AST, no `eval`) | local |
-| `convert_units` | length / mass / temperature + live currency | local + Frankfurter (ECB) |
-| `wikipedia_lookup` | best-matching article summary | Wikipedia REST |
-| `web_search` | instant-answer snippets + links | DuckDuckGo |
+| `convert_units` | length / mass / temperature + live currency | local + open.er-api.com (keyless) |
+| `wikipedia_lookup` | best-matching article summary | Wikipedia REST (keyless) |
+| `web_search` | instant-answer + HTML result snippets | DuckDuckGo (keyless) |
 | `get_current_time` | current time for any timezone / city | local `zoneinfo` |
-| `define_word` | English definitions, part of speech, example | dictionaryapi.dev |
-| `get_news` | recent headlines, optionally by topic | Google News RSS |
+| `define_word` | English definitions, part of speech, example | dictionaryapi.dev + Wiktionary (keyless) |
+| `get_news` | recent headlines, optionally by topic | Google News RSS (keyless) |
+| `send_email` | email an answer to an address the user gives | Gmail SMTP (needs an App Password) |
 
-Only **Gemini** needs an API key.
+Only **Gemini** needs an API key. `send_email` needs a Gmail App Password *if you enable it* (off by default).
 
 ## Setup
 
@@ -55,6 +56,24 @@ pip install -r requirements.txt
 Or a plain venv: `python -m venv .venv` then `.venv\Scripts\Activate.ps1`.
 
 Get a free key at <https://aistudio.google.com/apikey>.
+
+#### Enabling the email tool (optional)
+
+`send_email` lets a user say *"email today's weather for Karachi to me at name@example.com"*
+and the agent sends it **from your Gmail**. To turn it on, in `backend/.env`:
+
+1. Turn on 2-Step Verification for the Gmail account.
+2. Create an App Password: <https://myaccount.google.com/apppasswords>
+3. Set:
+   ```
+   EMAIL_ENABLED=1
+   GMAIL_ADDRESS=you@gmail.com
+   GMAIL_APP_PASSWORD=the16charpassword
+   EMAIL_ALLOWED_RECIPIENTS=      # optional: comma list to restrict who can be emailed
+   EMAIL_MAX_PER_HOUR=10          # optional: rate cap
+   ```
+
+Left disabled, the tool still appears but returns a "disabled" message instead of sending.
 
 Run it:
 

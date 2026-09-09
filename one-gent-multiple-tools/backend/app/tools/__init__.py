@@ -15,6 +15,7 @@ from . import (
     calculator,
     dictionary,
     news,
+    send_email,
     stocks,
     timetool,
     units,
@@ -33,6 +34,7 @@ _MODULES: list[ModuleType] = [
     timetool,
     dictionary,
     news,
+    send_email,
 ]
 
 DECLARATIONS: list[dict] = [m.DECLARATION for m in _MODULES]

@@ -20,7 +20,11 @@ SYSTEM_PROMPT = (
     "- You may call several tools, one after another, to fully answer a question.\n"
     "- If a tool returns an 'error' field, tell the user plainly what went wrong.\n"
     "- After you have what you need, reply in clear, concise prose. Show numbers with units.\n"
-    "- Do not invent data you could have looked up."
+    "- Do not invent data you could have looked up.\n"
+    "- Email: only call send_email when the user explicitly asks to have something emailed "
+    "AND gives an email address. First gather the information with the other tools, then send "
+    "it in the body with a short subject. If no address was given, ask for one instead. "
+    "After sending, confirm to the user what was sent and to which address."
 )
 
 MAX_STEPS = 6
