@@ -106,8 +106,20 @@ chmod 600 .env
 
 ## 5. Run it
 
-Uncomment the `mem_limit` / `mem_reservation` lines in `docker-compose.yml`
-first (they're tuned for the 1 GB box), then:
+Add a `docker-compose.override.yml` next to `docker-compose.yml` on the box —
+Compose merges it automatically, it's git-ignored, and the deploy workflow's
+`git reset --hard` leaves it alone (unlike edits to the tracked compose file):
+
+```bash
+cat > docker-compose.override.yml <<'EOF'
+services:
+  web:
+    mem_limit: 950m
+    mem_reservation: 384m
+EOF
+```
+
+Then:
 
 ```bash
 docker compose up -d --build
@@ -159,3 +171,58 @@ your-domain.com {
 
 Point the domain's A record at the EC2 public IP, open `443`/`80` in the
 security group, `docker compose up -d`. Certs issue automatically.
+
+---
+
+## 8. CI/CD — push to GitHub, box redeploys itself
+
+`.github/workflows/deploy-stock-analysis-agent.yml` runs on every push to
+`main` that touches `stock-analysis-agent/**`. It targets a **self-hosted
+runner installed on the EC2 box**, which polls GitHub over an outbound
+connection — so no inbound SSH rule and no SSH key in GitHub secrets. The job
+just runs, on the box:
+
+```
+git fetch --prune origin && git reset --hard origin/main
+docker compose up -d --build && docker image prune -f
+```
+
+then polls `/health` and fails (dumping logs) if it doesn't come up.
+
+### One-time: install the runner on the box
+
+GitHub repo → **Settings → Actions → Runners → New self-hosted runner** →
+Linux / x64. Copy the commands it shows (they embed a short-lived token) — they
+look like:
+
+```bash
+mkdir -p ~/actions-runner && cd ~/actions-runner
+curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/download/vX.Y.Z/actions-runner-linux-x64-X.Y.Z.tar.gz
+tar xzf actions-runner-linux-x64.tar.gz
+./config.sh --url https://github.com/aashirshehzad/Projects --token <TOKEN> --labels stock-ec2 --unattended
+```
+
+The `--labels stock-ec2` must match `runs-on: [self-hosted, stock-ec2]` in the
+workflow. Then install it as a service so it survives reboots and logout:
+
+```bash
+sudo ./svc.sh install ubuntu
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+### Notes
+
+- The runner runs as `ubuntu`, which is in the `docker` group, so `docker
+  compose` works without sudo.
+- The workflow deploys `/home/ubuntu/Projects/stock-analysis-agent` (the clone
+  from §4) in place; it does **not** use `actions/checkout`, so `.env` and
+  `docker-compose.override.yml` there are left untouched.
+- Private repo: `git fetch` on the box needs stored credentials. The §4 HTTPS
+  clone prompts once; run `git config --global credential.helper store` and do
+  one manual `git pull` (paste a PAT as the password) so it's cached for the
+  runner.
+- Trigger a redeploy by hand anytime from the repo's **Actions** tab →
+  *Deploy stock-analysis-agent* → **Run workflow**.
+- Watch a deploy: **Actions** tab, or `sudo journalctl -u 'actions.runner.*' -f`
+  on the box.

@@ -1,0 +1,38 @@
+name: Deploy stock-analysis-agent
+
+# Push to main that touches this project -> the self-hosted runner ON the EC2
+# box pulls the new code and rebuilds the container. The runner connects
+# outbound to GitHub, so the box needs no extra inbound firewall rules.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "stock-analysis-agent/**"
+  workflow_dispatch: {}   # lets you trigger a redeploy by hand from the Actions tab
+
+concurrency:
+  group: deploy-stock-analysis-agent
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, stock-ec2]
+    steps:
+      - name: Pull latest code and rebuild
+        working-directory: /home/ubuntu/Projects/stock-analysis-agent
+        run: |
+          set -euo pipefail
+          echo "Deploying commit ${GITHUB_SHA}"
+          git fetch --prune origin
+          git reset --hard origin/main
+          docker compose up -d --build
+          docker image prune -f
+          echo "Waiting for health..."
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8000/health >/dev/null; then
+              echo "Healthy."; exit 0
+            fi
+            sleep 3
+          done
+          echo "Health check never passed - dumping logs:"; docker compose logs --tail=50
+          exit 1

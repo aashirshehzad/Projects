@@ -24,5 +24,6 @@ api/
 vercel.json
 Dockerfile
 docker-compose.yml
+docker-compose.override.yml
 .dockerignore
 DEPLOY.md

@@ -7,5 +7,9 @@
 __pycache__/
 *.py[cod]
 
+# Per-host compose tweaks (e.g. mem_limit on the 1 GB EC2 box) live here,
+# untouched by the deploy workflow's `git reset --hard`.
+docker-compose.override.yml
+
 .vercel
 .env*
