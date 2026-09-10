@@ -32,3 +32,4 @@ htmlcov/
 # Auditor output
 audit-results.sarif
 audit-report.json
+examples/*.zip
