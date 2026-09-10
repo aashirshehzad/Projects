@@ -1,4 +1,4 @@
-"""Unit tests for the deterministic AST rules SEC-001 .. SEC-005."""
+"""Unit tests for the deterministic AST rules SEC-001 .. SEC-010."""
 
 from __future__ import annotations
 
@@ -57,6 +57,23 @@ def test_syntax_error_is_skipped_not_raised() -> None:
         ("yaml.load(s)", "SEC-004"),
         ("os.system('rm ' + p)", "SEC-005"),
         ("subprocess.run(cmd, shell=True)", "SEC-005"),
+        ("requests.get(u, verify=False)", "SEC-006"),
+        ("ssl._create_unverified_context()", "SEC-006"),
+        ("hashlib.md5(b).hexdigest()", "SEC-007"),
+        ('hashlib.new("sha1", b)', "SEC-007"),
+        ("cipher = AES.new(key, AES.MODE_ECB)", "SEC-007"),
+        ("auth_token = random.getrandbits(64)", "SEC-007"),
+        ("app.run(debug=True)", "SEC-008"),
+        ('srv.run(host="0.0.0.0")', "SEC-008"),
+        ("DEBUG = True", "SEC-008"),
+        ('ALLOWED_HOSTS = ["*"]', "SEC-008"),
+        ('add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True)', "SEC-009"),
+        ("CORS_ORIGIN_ALLOW_ALL = True", "SEC-009"),
+        ("marshal.loads(b)", "SEC-010"),
+        ("yaml.unsafe_load(s)", "SEC-010"),
+        ("torch.load(p)", "SEC-010"),
+        ("numpy.load(p, allow_pickle=True)", "SEC-010"),
+        ("pandas.read_pickle(p)", "SEC-010"),
     ],
 )
 def test_individual_patterns(src: str, expected: str) -> None:
@@ -73,10 +90,49 @@ def test_individual_patterns(src: str, expected: str) -> None:
         "json.loads(b)",
         "subprocess.run(['ls', '-l'])",
         "os.system('static command with no input')",
+        "requests.get(u, verify=True)",
+        "requests.get(u, timeout=5)",
+        "hashlib.sha256(b).hexdigest()",
+        'hashlib.new("sha256", b)',
+        "cipher = AES.new(key, AES.MODE_GCM)",
+        "jitter = random.random()",             # name not security-sensitive
+        "retry_delay = random.uniform(1, 3)",
+        "app.run(debug=False)",
+        'srv.run(host="127.0.0.1")',
+        "DEBUG = False",
+        'ALLOWED_HOSTS = ["example.com"]',
+        'add_middleware(CORSMiddleware, allow_origins=["https://x.com"], allow_credentials=True)',
+        "yaml.safe_load(s)",
+        "torch.load(p, weights_only=True)",
+        "numpy.load(p)",
+        "numpy.load(p, allow_pickle=False)",
     ],
 )
 def test_safe_patterns_do_not_fire(src: str) -> None:
     assert scan_source(src, "snippet.py") == []
+
+
+def test_insecure_extra_fixture_triggers_006_to_010() -> None:
+    result = scan_path(FIXTURES / "insecure_extra.py", base_dir=FIXTURES)
+    found = _rule_ids(result.violations)
+    for rule_id in ("SEC-006", "SEC-007", "SEC-008", "SEC-009", "SEC-010"):
+        assert rule_id in found, f"{rule_id} not detected; got {sorted(found)}"
+
+
+def test_inline_nosec_suppression() -> None:
+    bare = "eval(x)  # nosec\n"
+    assert scan_source(bare, "s.py") == []
+
+    named = "eval(x)  # nosec SEC-001\n"
+    assert scan_source(named, "s.py") == []
+
+    wrong_id = "eval(x)  # nosec SEC-999\n"
+    assert _rule_ids(scan_source(wrong_id, "s.py")) == {"SEC-001"}
+
+
+def test_noqa_must_name_the_rule() -> None:
+    assert _rule_ids(scan_source("eval(x)  # noqa\n", "s.py")) == {"SEC-001"}
+    assert scan_source("eval(x)  # noqa: SEC-001\n", "s.py") == []
 
 
 def test_violations_are_severity_sorted() -> None:

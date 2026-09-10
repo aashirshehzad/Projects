@@ -67,6 +67,28 @@ _FRIENDLY_RISK = {
         "A shell command is assembled from untrusted input, so an attacker could "
         "attach their own commands to it (command injection)."
     ),
+    "SEC-006": (
+        "TLS certificate checking is turned off, so the connection is not actually "
+        "secure -- someone on the network can read or change the traffic."
+    ),
+    "SEC-007": (
+        "A weak or broken cryptographic primitive is in use (an outdated hash, ECB "
+        "mode, or a non-secure random source for a secret). It can be forged or "
+        "predicted."
+    ),
+    "SEC-008": (
+        "A framework setting is unsafe for production -- debug mode, or accepting "
+        "requests for any host / on any network interface. Debug mode in particular "
+        "can expose a remote code-execution console."
+    ),
+    "SEC-009": (
+        "The API accepts cross-origin requests from any website. Combined with "
+        "credentials, any site a logged-in user visits can act as that user."
+    ),
+    "SEC-010": (
+        "The program loads data from an untrusted file in a format that can carry "
+        "executable code (marshal, an unsafe YAML loader, a pickled model file)."
+    ),
 }
 
 _MAX_CODE_LINES = 40

@@ -47,3 +47,47 @@ def ping(host):
 def archive(path):
     # Safe: argument list, no shell
     subprocess.run(["tar", "czf", "backup.tgz", path], check=True)
+
+
+# ---- safe counterparts for SEC-006 .. SEC-010 ----------------------------
+import hashlib
+import secrets
+
+import requests
+
+
+def fetch(url):
+    # Safe: verification left on (the default)
+    return requests.get(url, timeout=10)
+
+
+def digest(data):
+    # Safe: strong hash
+    return hashlib.sha256(data).hexdigest()
+
+
+def make_token():
+    # Safe: cryptographically secure RNG
+    session_token = secrets.token_hex(16)
+    return session_token
+
+
+# Safe: read from the environment, default off
+DEBUG = os.environ.get("DEBUG") == "1"
+ALLOWED_HOSTS = ["example.com", "www.example.com"]
+
+
+def add_cors(app):
+    from fastapi.middleware.cors import CORSMiddleware
+
+    # Safe: explicit origin allowlist
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["https://app.example.com"],
+        allow_credentials=True,
+    )
+
+
+def load_config_file(raw):
+    # Safe: safe_load, not unsafe_load
+    return yaml.safe_load(raw)

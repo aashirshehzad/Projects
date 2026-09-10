@@ -85,8 +85,14 @@ def scan_path(
     *,
     settings: Settings | None = None,
     base_dir: str | Path | None = None,
+    config: object | None = None,
 ) -> ScanResult:
-    """Recursively scan *target* (file or directory) and return a result."""
+    """Recursively scan *target* (file or directory) and return a result.
+
+    *config* is an optional :class:`~app.static_scanner.ruleconfig.RuleConfig`
+    (or anything with ``.disabled`` / ``.severity``); ``None`` means every rule
+    at its built-in severity.
+    """
     settings = settings or get_settings()
     target = Path(target)
     base = Path(base_dir) if base_dir else (target if target.is_dir() else target.parent)
@@ -106,7 +112,7 @@ def scan_path(
             rel = str(path)
         rel = rel.replace(os.sep, "/")
 
-        violations = scan_source(source, rel)
+        violations = scan_source(source, rel, config=config)
         if violations:
             source_lines = source.splitlines()
             for v in violations:
@@ -125,11 +131,12 @@ def scan_paths(
     *,
     settings: Settings | None = None,
     base_dir: str | Path | None = None,
+    config: object | None = None,
 ) -> ScanResult:
     """Scan several targets, merging into one :class:`ScanResult`."""
     merged = ScanResult()
     for t in targets:
-        r = scan_path(t, settings=settings, base_dir=base_dir)
+        r = scan_path(t, settings=settings, base_dir=base_dir, config=config)
         merged.violations.extend(r.violations)
         merged.files_scanned += r.files_scanned
         merged.files_skipped += r.files_skipped

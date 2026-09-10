@@ -4,6 +4,7 @@ No subprocesses, no network, no model downloads -- just ``ast`` walks that turn
 source strings into violation records with zero hallucination risk.
 """
 
+from app.static_scanner import baseline
 from app.static_scanner.ast_rules import (
     RULES,
     Severity,
@@ -11,6 +12,7 @@ from app.static_scanner.ast_rules import (
     scan_source,
 )
 from app.static_scanner.engine import ScanResult, scan_path, scan_paths
+from app.static_scanner.ruleconfig import RuleConfig
 
 __all__ = [
     "RULES",
@@ -20,4 +22,6 @@ __all__ = [
     "ScanResult",
     "scan_path",
     "scan_paths",
+    "RuleConfig",
+    "baseline",
 ]

@@ -4,10 +4,11 @@ Project-specific guidance for Claude Code working in `code-review/`.
 
 ## What this is
 
-A two-stage code auditor: a deterministic `ast` scanner (Stage 1-2) feeds a
-single structured-output LLM call (Stage 3) that triages findings and writes
-patches; results dispatch to console / GitHub PR / SARIF (Stage 4). Full spec:
-`hybrid_code_auditor_implementation_plan.pdf` in Downloads.
+A two-stage code auditor: a deterministic `ast` scanner (Stage 1-2, rules
+SEC-001..SEC-010) feeds a single structured-output LLM call (Stage 3) that
+triages findings and writes patches; results dispatch to console / GitHub PR /
+SARIF / PDF (Stage 4). Original spec: `hybrid_code_auditor_implementation_plan.pdf`
+in Downloads (covers SEC-001..005; 006-010 added later).
 
 ## Non-negotiables
 
@@ -39,6 +40,12 @@ patches; results dispatch to console / GitHub PR / SARIF (Stage 4). Full spec:
 - Every new rule needs: an entry in `RULES`, a `visit_*` branch, a vulnerable and
   a clean fixture line, and a `test_individual_patterns` / `test_safe_patterns`
   case.
+- Suppression is honoured in `scan_source`: `# nosec` (all rules) / `# nosec SEC-00X`
+  / `# noqa: SEC-00X` (named only). Project config is `RuleConfig` from
+  `[tool.code-auditor]` in pyproject (disabled_rules + severity overrides);
+  `scan_source`/`scan_path` take a duck-typed `config=`. Baselines
+  (`static_scanner/baseline.py`) fingerprint `rule_id + path + offending line`
+  and are applied by the CLI after the scan, before remediation.
 
 ## Commands
 

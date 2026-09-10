@@ -27,6 +27,31 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 | SEC-003 | HIGH | `key`/`secret`/`token`/`password = "<literal>"` |
 | SEC-004 | CRITICAL | `pickle.loads` / `yaml.load` without `SafeLoader` |
 | SEC-005 | MEDIUM | `shell=True` / `os.system()` with dynamic arguments |
+| SEC-006 | HIGH | `verify=False` / `ssl._create_unverified_context()` |
+| SEC-007 | MEDIUM | `md5`/`sha1`, AES/DES **ECB** mode, `random` seeding a secret |
+| SEC-008 | MEDIUM | `debug=True`, `DEBUG = True`, `ALLOWED_HOSTS = ["*"]`, `host="0.0.0.0"` |
+| SEC-009 | HIGH | `allow_origins=["*"]` (HIGH with credentials), `CORS_ORIGIN_ALLOW_ALL` |
+| SEC-010 | CRITICAL | `yaml.unsafe_load`, `marshal`, `torch.load`, `read_pickle`, `allow_pickle=True` |
+
+**Suppress a finding** inline with `# nosec` (all rules on that line),
+`# nosec SEC-002`, or `# noqa: SEC-002` (named rules only).
+
+**Per-project config** in `pyproject.toml`:
+
+```toml
+[tool.code-auditor]
+disabled_rules = ["SEC-007"]
+
+[tool.code-auditor.severity]
+SEC-005 = "HIGH"
+```
+
+**Baseline** an existing codebase so CI only fails on *new* findings:
+
+```bash
+python -m app.main audit . --no-llm --baseline .auditignore --update-baseline  # once
+python -m app.main audit . --baseline .auditignore                             # thereafter
+```
 
 ## Install
 
@@ -76,6 +101,8 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` operational error.
 - `--sarif PATH` / `--json PATH` - machine-readable output.
 - `--pdf PATH` - plain-language PDF report for non-technical readers (exec
   summary, severity guide, per-finding explanation + suggested fix).
+- `--config PATH` - `pyproject.toml` with `[tool.code-auditor]` (default `./pyproject.toml`).
+- `--baseline PATH` / `--update-baseline` - suppress pre-existing findings / (re)write the baseline.
 
 ## Local web UI
 

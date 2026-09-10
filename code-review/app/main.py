@@ -24,6 +24,7 @@ from app.llm_remediation.remediator import Remediator, build_unreviewed_report
 from app.llm_remediation.schemas import AuditRemediationReport
 from app.reporter.console import console, render_report, render_scan_summary
 from app.reporter.sarif import write_sarif
+from app.static_scanner import baseline as baseline_mod
 from app.static_scanner.ast_rules import Severity
 from app.static_scanner.diff_parser import (
     changed_line_map,
@@ -31,6 +32,7 @@ from app.static_scanner.diff_parser import (
     filter_to_diff,
 )
 from app.static_scanner.engine import ScanResult, scan_path, scan_paths
+from app.static_scanner.ruleconfig import RuleConfig
 
 _EXIT_OK = 0
 _EXIT_FINDINGS = 1
@@ -48,6 +50,23 @@ def _llm_options(fn):
         type=click.Choice(["gemini", "openai"], case_sensitive=False),
         default=None,
         help="Override the Stage 3 backend (default: gemini).",
+    )(fn)
+    return fn
+
+
+def _scan_options(fn):
+    fn = click.option(
+        "--config", "config_path", type=click.Path(dir_okay=False), default=None,
+        help="pyproject.toml with a [tool.code-auditor] section "
+        "(default: ./pyproject.toml).",
+    )(fn)
+    fn = click.option(
+        "--baseline", "baseline_path", type=click.Path(dir_okay=False), default=None,
+        help="Suppress findings already recorded in this baseline file.",
+    )(fn)
+    fn = click.option(
+        "--update-baseline", is_flag=True,
+        help="Write the current findings to --baseline and exit 0.",
     )(fn)
     return fn
 
@@ -104,6 +123,42 @@ def _run_remediation(
         return build_unreviewed_report(
             result.violations, reason="unavailable (Stage 3 call failed)"
         )
+
+
+def _load_rule_config(config_path: str | None, *, near: str = ".") -> RuleConfig:
+    path = config_path or str(Path(near) / "pyproject.toml")
+    cfg = RuleConfig.load(path)
+    if cfg.is_active():
+        bits = []
+        if cfg.disabled:
+            bits.append(f"disabled {', '.join(sorted(cfg.disabled))}")
+        if cfg.severity:
+            bits.append("severity overrides " + ", ".join(
+                f"{k}->{v}" for k, v in sorted(cfg.severity.items())
+            ))
+        console.print(f"[dim]rule config ({path}): {'; '.join(bits)}[/]")
+    return cfg
+
+
+def _handle_baseline(
+    result: ScanResult, baseline_path: str | None, update_baseline: bool
+) -> bool:
+    """Apply / write the baseline. Returns True if the command should exit now."""
+    if update_baseline:
+        if not baseline_path:
+            raise click.UsageError("--update-baseline requires --baseline PATH.")
+        n = baseline_mod.write(baseline_path, result.violations)
+        console.print(f"[green]Wrote {n} fingerprint(s) to {baseline_path}.[/]")
+        return True
+    if baseline_path:
+        result.violations, suppressed = baseline_mod.apply(
+            result.violations, baseline_mod.load(baseline_path)
+        )
+        if suppressed:
+            console.print(
+                f"[dim]{suppressed} pre-existing finding(s) suppressed by baseline[/]"
+            )
+    return False
 
 
 def _emit_outputs(
@@ -204,6 +259,7 @@ def cli() -> None:
 @cli.command()
 @click.argument("path", type=click.Path(exists=True), default=".")
 @_llm_options
+@_scan_options
 @_output_options
 @click.option("--github-pr-comments", is_flag=True, help="Post findings to the current PR.")
 def audit(
@@ -211,6 +267,9 @@ def audit(
     no_llm: bool,
     model: str | None,
     provider: str | None,
+    config_path: str | None,
+    baseline_path: str | None,
+    update_baseline: bool,
     sarif_path: str | None,
     json_path: str | None,
     pdf_path: str | None,
@@ -220,7 +279,10 @@ def audit(
 ) -> None:
     """Recursively audit PATH (a file or directory)."""
     try:
-        result = scan_path(path)
+        cfg = _load_rule_config(config_path, near=path if Path(path).is_dir() else ".")
+        result = scan_path(path, config=cfg)
+        if _handle_baseline(result, baseline_path, update_baseline):
+            sys.exit(_EXIT_OK)
         report = _run_remediation(result, no_llm=no_llm, model=model, provider=provider)
         if ci_mode or no_llm:
             render_scan_summary(result)
@@ -242,6 +304,7 @@ def audit(
 @cli.command()
 @click.argument("base_branch", default="origin/main")
 @_llm_options
+@_scan_options
 @_output_options
 @click.option("--github-pr-comments", is_flag=True, help="Post findings to the current PR.")
 @click.option("--repo-root", type=click.Path(exists=True, file_okay=False), default=".")
@@ -250,6 +313,9 @@ def diff(
     no_llm: bool,
     model: str | None,
     provider: str | None,
+    config_path: str | None,
+    baseline_path: str | None,
+    update_baseline: bool,
     sarif_path: str | None,
     json_path: str | None,
     pdf_path: str | None,
@@ -260,15 +326,18 @@ def diff(
 ) -> None:
     """Audit only the lines changed since BASE_BRANCH (merge-base diff)."""
     try:
+        cfg = _load_rule_config(config_path, near=repo_root)
         changed_files = changed_python_files(base_branch, repo_root=repo_root)
         if not changed_files:
             console.print("[green]No changed Python files vs "
                           f"{base_branch}; nothing to audit.[/]")
             sys.exit(_EXIT_OK)
         targets = [Path(repo_root) / f for f in changed_files]
-        result = scan_paths(targets, base_dir=repo_root)
+        result = scan_paths(targets, base_dir=repo_root, config=cfg)
         line_map = changed_line_map(base_branch, repo_root=repo_root)
         result.violations = filter_to_diff(result.violations, line_map)
+        if _handle_baseline(result, baseline_path, update_baseline):
+            sys.exit(_EXIT_OK)
 
         report = _run_remediation(result, no_llm=no_llm, model=model, provider=provider)
         if ci_mode or no_llm:
@@ -291,6 +360,10 @@ def diff(
 @cli.command()
 @click.argument("path", type=click.Path(exists=True))
 @_llm_options
+@click.option(
+    "--config", "config_path", type=click.Path(dir_okay=False), default=None,
+    help="pyproject.toml with a [tool.code-auditor] section.",
+)
 @click.option("--auto-apply", is_flag=True, help="Write patches into local files.")
 @click.option("--yes", "assume_yes", is_flag=True, help="Do not prompt before each patch.")
 def fix(
@@ -298,6 +371,7 @@ def fix(
     no_llm: bool,
     model: str | None,
     provider: str | None,
+    config_path: str | None,
     auto_apply: bool,
     assume_yes: bool,
 ) -> None:
@@ -305,7 +379,8 @@ def fix(
     if no_llm:
         raise click.UsageError("`fix` needs the LLM stage; drop --no-llm.")
     try:
-        result = scan_path(path)
+        cfg = _load_rule_config(config_path, near=path if Path(path).is_dir() else ".")
+        result = scan_path(path, config=cfg)
         report = _run_remediation(result, no_llm=False, model=model, provider=provider)
         render_report(result, report)
         if not auto_apply:

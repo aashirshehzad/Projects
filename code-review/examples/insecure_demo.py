@@ -12,9 +12,15 @@ Try it:
 Or zip this folder and drop it into the web UI.
 """
 
+import hashlib
+import marshal
 import os
 import pickle
+import random
+import ssl
 import subprocess
+
+import requests
 import yaml
 
 try:  # cPickle only exists on Python 2; import guarded so this file still parses
@@ -108,6 +114,69 @@ def os_popen(name):
 
 
 # ===========================================================================
+# SEC-006  --  TLS verification disabled   (HIGH)
+# ===========================================================================
+def fetch_insecure(url):
+    return requests.get(url, verify=False)                            # SEC-006
+
+
+def unverified_ssl():
+    return ssl._create_unverified_context()                           # SEC-006
+
+
+# ===========================================================================
+# SEC-007  --  Weak cryptography   (MEDIUM)
+# ===========================================================================
+def md5_digest(data):
+    return hashlib.md5(data).hexdigest()                              # SEC-007
+
+
+def sha1_via_new(data):
+    return hashlib.new("sha1", data).hexdigest()                      # SEC-007
+
+
+def csrf_token():
+    csrf_secret = random.getrandbits(128)                             # SEC-007
+    return csrf_secret
+
+
+# ===========================================================================
+# SEC-008  --  Insecure framework configuration   (MEDIUM / HIGH)
+# ===========================================================================
+DEBUG = True                                                          # SEC-008
+ALLOWED_HOSTS = ["*"]                                                 # SEC-008
+
+
+def serve(app):
+    app.run(host="0.0.0.0", debug=True)                               # SEC-008 (x2)
+
+
+# ===========================================================================
+# SEC-009  --  Overly permissive CORS   (HIGH with credentials)
+# ===========================================================================
+def wire_cors(app):
+    from fastapi.middleware.cors import CORSMiddleware
+
+    app.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_credentials=True,  # SEC-009
+    )
+
+
+CORS_ORIGIN_ALLOW_ALL = True                                          # SEC-009
+
+
+# ===========================================================================
+# SEC-010  --  Extended unsafe deserialization   (CRITICAL / HIGH)
+# ===========================================================================
+def load_marshal(blob):
+    return marshal.loads(blob)                                        # SEC-010
+
+
+def load_unsafe_yaml(raw):
+    return yaml.unsafe_load(raw)                                      # SEC-010
+
+
+# ===========================================================================
 # SAFE  --  these must produce NO findings (false-positive check)
 # ===========================================================================
 import ast
@@ -140,3 +209,27 @@ def safe_subprocess(host):
 
 def safe_os_system():
     os.system("echo static string with no user input")                # safe (constant, not dynamic)
+
+
+def safe_fetch(url):
+    return requests.get(url, timeout=10)                              # safe (verify defaults on)
+
+
+def safe_hash(data):
+    return hashlib.sha256(data).hexdigest()                          # safe (strong hash)
+
+
+def safe_token():
+    import secrets
+
+    return secrets.token_hex(16)                                     # safe (CSPRNG)
+
+
+SAFE_DEBUG = os.environ.get("DEBUG") == "1"                          # safe (env, defaults off)
+SAFE_ALLOWED_HOSTS = ["api.example.com"]                            # safe (explicit allowlist)
+
+
+def safe_marshal_alt(blob):
+    import json
+
+    return json.loads(blob)                                          # safe (JSON, not marshal)
