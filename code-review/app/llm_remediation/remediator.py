@@ -1,36 +1,19 @@
-"""OpenAI-backed remediation client (Stage 3).
+"""Stage 3 orchestration.
 
-One violation batch -> one ``chat.completions.parse`` call -> one validated
-``AuditRemediationReport``. No multi-turn agent loop, no ret['tool'] chatter.
+One violation batch -> one provider call -> one validated
+``AuditRemediationReport``. Provider selection (Gemini / OpenAI) lives in
+``providers.py``; this module only owns batching and the empty-input case.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from app.core.config import Settings, get_settings
-from app.core.exceptions import LLMRemediationError
 from app.llm_remediation.prompts import SYSTEM_PROMPT, build_user_prompt
+from app.llm_remediation.providers import LLMProvider, get_provider
 from app.llm_remediation.schemas import AuditRemediationReport, IssueRemediation
 from app.static_scanner.ast_rules import Violation
-
-
-class _ParseClient(Protocol):
-    """Structural type for the slice of the OpenAI client we touch (eases mocking)."""
-
-    @property
-    def beta(self) -> Any: ...
-
-
-def _default_client(settings: Settings) -> _ParseClient:
-    try:
-        from openai import OpenAI
-    except ImportError as exc:  # pragma: no cover - import guard
-        raise LLMRemediationError(
-            "The `openai` package is not installed; run `pip install openai` "
-            "or pass --no-llm."
-        ) from exc
-    return OpenAI(api_key=settings.require_openai_key(), timeout=settings.llm_timeout_seconds)
 
 
 def build_unreviewed_report(
@@ -69,16 +52,11 @@ class Remediator:
         self,
         settings: Settings | None = None,
         *,
-        client: _ParseClient | None = None,
+        client: Any | None = None,
+        provider: LLMProvider | None = None,
     ) -> None:
         self.settings = settings or get_settings()
-        self._client = client
-
-    @property
-    def client(self) -> _ParseClient:
-        if self._client is None:
-            self._client = _default_client(self.settings)
-        return self._client
+        self._provider = provider or get_provider(self.settings, client=client)
 
     def remediate(self, violations: list[Violation]) -> AuditRemediationReport:
         if not violations:
@@ -89,32 +67,7 @@ class Remediator:
             )
 
         batch = violations[: self.settings.max_violations_to_llm]
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(batch)},
-        ]
-
-        try:
-            completion = self.client.beta.chat.completions.parse(
-                model=self.settings.llm_model,
-                messages=messages,
-                response_format=AuditRemediationReport,
-                temperature=self.settings.llm_temperature,
-                max_tokens=self.settings.llm_max_tokens,
-            )
-        except LLMRemediationError:
-            raise
-        except Exception as exc:  # network / API / timeout
-            raise LLMRemediationError(f"Remediation model call failed: {exc}") from exc
-
-        choice = completion.choices[0]
-        if getattr(choice.message, "refusal", None):
-            raise LLMRemediationError(
-                f"Model refused to remediate: {choice.message.refusal}"
-            )
-        report = choice.message.parsed
-        if report is None:
-            raise LLMRemediationError("Model returned no parseable structured output.")
+        report = self._provider.parse(SYSTEM_PROMPT, build_user_prompt(batch))
 
         # The scanner is the source of truth for how many issues went in.
         report.total_violations_evaluated = len(batch)
@@ -125,7 +78,10 @@ def remediate(
     violations: list[Violation],
     *,
     settings: Settings | None = None,
-    client: _ParseClient | None = None,
+    client: Any | None = None,
+    provider: LLMProvider | None = None,
 ) -> AuditRemediationReport:
     """Module-level convenience wrapper around :class:`Remediator`."""
-    return Remediator(settings=settings, client=client).remediate(violations)
+    return Remediator(
+        settings=settings, client=client, provider=provider
+    ).remediate(violations)

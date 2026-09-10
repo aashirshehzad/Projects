@@ -13,7 +13,7 @@ the job:
 | Layer | What it does | Cost | Latency |
 |-------|--------------|------|---------|
 | **1-2. AST engine** | `ast.NodeVisitor` rules SEC-001..SEC-005, local CPU | $0.00 | < 2s / 100k LOC |
-| **3. LLM remediation** | one `chat.completions.parse` call: triage + patch + test | ~$0.0003 | ~2.5s |
+| **3. LLM remediation** | one structured-JSON call: triage + patch + test | ~$0.0003 | ~2.5s |
 | **4. Dispatch** | Rich console, GitHub PR comments, SARIF 2.1.0 | - | - |
 
 The LLM only ever sees the +/-5 line snippet around a violation, never the file.
@@ -32,12 +32,18 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
 ```bash
 cd code-review
-python -m venv .venv && . .venv/Scripts/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-cp .env.example .env   # add OPENAI_API_KEY for Stage 3
+pip install -e ".[dev]"          # into your Python 3.11 env (here: conda env `code-review`)
+cp .env.example .env             # add GEMINI_API_KEY for Stage 3
 ```
 
 Python 3.11+ required.
+
+### Stage 3 provider
+
+Default backend is **Google Gemini** (`gemini-3.5-flash-lite`); set `GEMINI_API_KEY`
+in `.env`. To use OpenAI instead, set `AUDITOR_LLM_PROVIDER=openai`,
+`AUDITOR_LLM_MODEL=gpt-4o-mini`, `OPENAI_API_KEY=...` (or pass `--provider openai`).
+Both paths return the identical `AuditRemediationReport` schema.
 
 ## Usage
 
@@ -60,6 +66,7 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` operational error.
 ### Key flags
 
 - `--no-llm` - Stage 1-2 only; findings are unverified and unpatched.
+- `--provider {gemini,openai}` / `--model <id>` - override the Stage 3 backend.
 - `--fail-on {CRITICAL,HIGH,MEDIUM,LOW}` - severity gate (default `MEDIUM`).
 - `--ci-mode` - terse output; a violation the LLM marks as a false positive no
   longer fails the build.
@@ -90,7 +97,7 @@ pytest --cov=app           # coverage
 app/
   core/            config (pydantic-settings) + domain exceptions
   static_scanner/  ast_rules.py, diff_parser.py, engine.py
-  llm_remediation/ schemas.py, prompts.py, remediator.py
+  llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py
   main.py          Click CLI: audit / diff / fix
 ```

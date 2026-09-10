@@ -43,6 +43,12 @@ _EXIT_ERROR = 2
 def _llm_options(fn):
     fn = click.option("--no-llm", is_flag=True, help="Static findings only; skip Stage 3.")(fn)
     fn = click.option("--model", default=None, help="Override the remediation model id.")(fn)
+    fn = click.option(
+        "--provider",
+        type=click.Choice(["gemini", "openai"], case_sensitive=False),
+        default=None,
+        help="Override the Stage 3 backend (default: gemini).",
+    )(fn)
     return fn
 
 
@@ -70,13 +76,22 @@ def _output_options(fn):
 # helpers
 # --------------------------------------------------------------------------- #
 def _run_remediation(
-    result: ScanResult, *, no_llm: bool, model: str | None
+    result: ScanResult,
+    *,
+    no_llm: bool,
+    model: str | None,
+    provider: str | None = None,
 ) -> AuditRemediationReport:
     if no_llm or not result.violations:
         return build_unreviewed_report(result.violations)
     settings = get_settings()
+    overrides: dict[str, str] = {}
+    if provider:
+        overrides["llm_provider"] = provider.lower()
     if model:
-        settings = settings.model_copy(update={"llm_model": model})
+        overrides["llm_model"] = model
+    if overrides:
+        settings = settings.model_copy(update=overrides)
     try:
         return Remediator(settings=settings).remediate(result.violations)
     except AuditorError as exc:
@@ -180,6 +195,7 @@ def audit(
     path: str,
     no_llm: bool,
     model: str | None,
+    provider: str | None,
     sarif_path: str | None,
     json_path: str | None,
     fail_on: str,
@@ -189,7 +205,7 @@ def audit(
     """Recursively audit PATH (a file or directory)."""
     try:
         result = scan_path(path)
-        report = _run_remediation(result, no_llm=no_llm, model=model)
+        report = _run_remediation(result, no_llm=no_llm, model=model, provider=provider)
         if ci_mode or no_llm:
             render_scan_summary(result)
         else:
@@ -213,6 +229,7 @@ def diff(
     base_branch: str,
     no_llm: bool,
     model: str | None,
+    provider: str | None,
     sarif_path: str | None,
     json_path: str | None,
     fail_on: str,
@@ -232,7 +249,7 @@ def diff(
         line_map = changed_line_map(base_branch, repo_root=repo_root)
         result.violations = filter_to_diff(result.violations, line_map)
 
-        report = _run_remediation(result, no_llm=no_llm, model=model)
+        report = _run_remediation(result, no_llm=no_llm, model=model, provider=provider)
         if ci_mode or no_llm:
             render_scan_summary(result)
         else:
@@ -255,6 +272,7 @@ def fix(
     path: str,
     no_llm: bool,
     model: str | None,
+    provider: str | None,
     auto_apply: bool,
     assume_yes: bool,
 ) -> None:
@@ -263,7 +281,7 @@ def fix(
         raise click.UsageError("`fix` needs the LLM stage; drop --no-llm.")
     try:
         result = scan_path(path)
-        report = _run_remediation(result, no_llm=False, model=model)
+        report = _run_remediation(result, no_llm=False, model=model, provider=provider)
         render_report(result, report)
         if not auto_apply:
             console.print("\n[dim]Re-run with --auto-apply to write these patches.[/]")
