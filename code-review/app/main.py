@@ -82,7 +82,9 @@ def _run_remediation(
     except AuditorError as exc:
         console.print(f"[yellow]LLM remediation unavailable:[/] {exc}")
         console.print("[yellow]Falling back to static-only report.[/]")
-        return build_unreviewed_report(result.violations)
+        return build_unreviewed_report(
+            result.violations, reason="unavailable (Stage 3 call failed)"
+        )
 
 
 def _emit_outputs(

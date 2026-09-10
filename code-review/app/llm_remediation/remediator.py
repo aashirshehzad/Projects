@@ -33,12 +33,20 @@ def _default_client(settings: Settings) -> _ParseClient:
     return OpenAI(api_key=settings.require_openai_key(), timeout=settings.llm_timeout_seconds)
 
 
-def build_unreviewed_report(violations: list[Violation]) -> AuditRemediationReport:
-    """Static-only fallback used by ``--no-llm`` -- no fixes, no false-positive triage."""
+def build_unreviewed_report(
+    violations: list[Violation],
+    *,
+    reason: str = "skipped (--no-llm)",
+) -> AuditRemediationReport:
+    """Static-only fallback -- no fixes, no false-positive triage.
+
+    Used both for ``--no-llm`` and when the Stage 3 call fails; *reason* is
+    surfaced in the summary so the two cases are distinguishable.
+    """
     return AuditRemediationReport(
         summary=(
             f"{len(violations)} static violation(s) found. LLM remediation was "
-            "skipped (--no-llm); findings are unverified and unpatched."
+            f"{reason}; findings are unverified and unpatched."
         ),
         total_violations_evaluated=len(violations),
         remediations=[
