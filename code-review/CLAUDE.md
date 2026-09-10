@@ -47,6 +47,14 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   `scan_source`/`scan_path` take a duck-typed `config=`. Baselines
   (`static_scanner/baseline.py`) fingerprint `rule_id + path + offending line`
   and are applied by the CLI after the scan, before remediation.
+- `static_scanner/taint.py` is a deterministic, flow-insensitive, single-function
+  taint pass (source list + assignment fixpoint, no cross-function/aliasing). It
+  is *additive only*: every syntactic finding still fires; taint just adds
+  `Violation.tainted` + a severity floor of HIGH, and enables the SEC-002
+  "query built earlier" catch. Never let it suppress a finding.
+- `app/deps/` (OSV) is the one networked stage, opt-in via `--deps`. Dependency
+  hits are `DEP-001` `Violation`s; Stage 3 (`_code_violations` in main.py) skips
+  `DEP-*`.
 
 ## Commands
 

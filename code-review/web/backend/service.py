@@ -74,6 +74,7 @@ def _violation_payload(v: Any) -> dict[str, Any]:
         "end_line_number": v.end_line_number,
         "snippet": v.snippet,
         "context_start_line": v.context_start_line,
+        "tainted": getattr(v, "tainted", False),
     }
 
 

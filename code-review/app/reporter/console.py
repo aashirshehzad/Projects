@@ -43,11 +43,14 @@ def render_scan_summary(result: ScanResult) -> None:
     table.add_column("Location", no_wrap=True, style="cyan")
     table.add_column("Finding")
     for v in result.violations:
+        finding = v.message
+        if getattr(v, "tainted", False):
+            finding = "[bold]\\[user input][/] " + finding
         table.add_row(
             _sev_text(v.severity),
             v.rule_id,
             f"{v.file_path}:{v.line_number}",
-            v.message,
+            finding,
         )
     console.print(table)
     tally = "  ".join(f"{k}={v}" for k, v in counts.items() if v)

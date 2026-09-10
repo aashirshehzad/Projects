@@ -164,6 +164,7 @@ def payload_from_scan(
                 "file_path": v.file_path,
                 "line_number": v.line_number,
                 "snippet": v.snippet,
+                "tainted": getattr(v, "tainted", False),
             }
             for v in result.violations
         ],
@@ -291,6 +292,12 @@ def render_pdf(
             st["body"],
         ))
         story.append(Paragraph(f"<b>Scanner detail:</b> {v['message']}", st["label"]))
+        if v.get("tainted"):
+            story.append(Paragraph(
+                "<b>Data flow:</b> the flagged value was traced to user-controlled "
+                "input within the same function.",
+                st["label"],
+            ))
 
         if v.get("snippet"):
             story.append(Paragraph("The code in question:", st["label"]))

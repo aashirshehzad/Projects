@@ -33,6 +33,12 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 | SEC-009 | HIGH | `allow_origins=["*"]` (HIGH with credentials), `CORS_ORIGIN_ALLOW_ALL` |
 | SEC-010 | CRITICAL | `yaml.unsafe_load`, `marshal`, `torch.load`, `read_pickle`, `allow_pickle=True` |
 
+A lightweight **intra-function taint pass** (deterministic, single-file) backs
+SEC-001/002/005: it lets SEC-002 catch a query string assembled a few lines
+before `execute()`, and tags any finding whose argument reaches request data /
+`sys.argv` / `os.environ` / `input()` with `[user input]` (and bumps it to at
+least HIGH).
+
 **Suppress a finding** inline with `# nosec` (all rules on that line),
 `# nosec SEC-002`, or `# noqa: SEC-002` (named rules only).
 

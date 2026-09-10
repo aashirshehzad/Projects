@@ -6,6 +6,7 @@ export default function FindingCard({ violation: v, remediation: r }) {
         <span className="finding-rule">
           {v.rule_id} · {v.title}
         </span>
+        {v.tainted && <span className="badge badge-taint">user input</span>}
         <span className="finding-loc">
           {v.file_path}:{v.line_number}
         </span>

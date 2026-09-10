@@ -218,6 +218,11 @@ code {
   background: var(--sev-low);
 }
 
+.badge-taint {
+  background: #7c3aed;
+  color: #fff;
+}
+
 /* ---- finding ---- */
 .finding {
   margin: 14px 0;

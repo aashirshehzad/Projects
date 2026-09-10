@@ -16,6 +16,8 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 
+from app.static_scanner.taint import TaintInfo, _expr_tainted, collect_function_taint
+
 
 class Severity(str, Enum):
     CRITICAL = "CRITICAL"
@@ -40,6 +42,8 @@ class Violation:
     line_number: int
     col_offset: int = 0
     end_line_number: int | None = None
+    # True when the flagged argument demonstrably reaches user-controlled input.
+    tainted: bool = False
     # Filled in by the engine once the file's line list is available.
     snippet: str = ""
     context_start_line: int = 0
@@ -239,6 +243,7 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
     def __init__(self, file_path: str) -> None:
         self.file_path = file_path
         self.violations: list[Violation] = []
+        self._taint_stack: list[TaintInfo] = []
 
     # -- helpers ---------------------------------------------------------------
     def _add(
@@ -248,20 +253,43 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
         message: str,
         *,
         severity: str | None = None,
-    ) -> None:
+    ) -> Violation:
         meta = RULES[rule_id]
-        self.violations.append(
-            Violation(
-                rule_id=rule_id,
-                severity=Severity(severity or meta["severity"]),
-                title=meta["title"],
-                message=message,
-                file_path=self.file_path,
-                line_number=getattr(node, "lineno", 1),
-                col_offset=getattr(node, "col_offset", 0),
-                end_line_number=getattr(node, "end_lineno", None),
-            )
+        v = Violation(
+            rule_id=rule_id,
+            severity=Severity(severity or meta["severity"]),
+            title=meta["title"],
+            message=message,
+            file_path=self.file_path,
+            line_number=getattr(node, "lineno", 1),
+            col_offset=getattr(node, "col_offset", 0),
+            end_line_number=getattr(node, "end_lineno", None),
         )
+        self.violations.append(v)
+        return v
+
+    # -- taint (intra-function, best-effort) --------------------------------
+    def _taint(self) -> TaintInfo:
+        return self._taint_stack[-1] if self._taint_stack else TaintInfo()
+
+    def _enter_function(self, node: ast.AST) -> None:
+        self._taint_stack.append(collect_function_taint(node))
+        self.generic_visit(node)
+        self._taint_stack.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._enter_function(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._enter_function(node)
+
+    def _mark_if_tainted(self, v: Violation, arg: ast.expr | None) -> None:
+        if arg is None or not _expr_tainted(arg, self._taint().tainted):
+            return
+        v.tainted = True
+        if v.severity.rank > Severity.HIGH.rank:
+            v.severity = Severity.HIGH
+        v.message = v.message.rstrip(".") + ". The value reaches user-controlled input."
 
     # -- SEC-001 / SEC-002 / SEC-004 / SEC-005 all hang off Call -------------
     def visit_Call(self, node: ast.Call) -> None:
@@ -270,17 +298,19 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
 
         # SEC-001 -- dynamic code execution
         if isinstance(node.func, ast.Name) and node.func.id in _DANGEROUS_BUILTINS:
-            self._add(
+            v = self._add(
                 "SEC-001",
                 node,
                 f"Call to `{node.func.id}()` executes arbitrary code at runtime.",
             )
+            self._mark_if_tainted(v, node.args[0] if node.args else None)
         elif isinstance(node.func, ast.Attribute) and bare in _DANGEROUS_BUILTINS:
-            self._add(
+            v = self._add(
                 "SEC-001",
                 node,
                 f"Call to `{name}()` executes arbitrary code at runtime.",
             )
+            self._mark_if_tainted(v, node.args[0] if node.args else None)
 
         # SEC-002 -- raw SQL string built for cursor.execute()
         if bare in {"execute", "executemany", "executescript", "raw"}:
@@ -307,6 +337,17 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
                     f"`{name}()` receives a `.format()` string; use bound parameters "
                     "instead of interpolation.",
                 )
+            elif (
+                isinstance(first, ast.Name)
+                and first.id in self._taint().dynamic_strings
+            ):
+                v = self._add(
+                    "SEC-002",
+                    node,
+                    f"`{name}()` receives `{first.id}`, a query string assembled from "
+                    "a user-controlled value on an earlier line; use bound parameters.",
+                )
+                v.tainted = True
 
         # SEC-004 -- unsafe deserialization
         if name in {"pickle.loads", "pickle.load", "cPickle.loads", "cPickle.load"} or (
@@ -333,13 +374,14 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
         if name in {"os.system", "os.popen", "commands.getoutput"}:
             arg = node.args[0] if node.args else None
             if _is_dynamic_string(arg):
-                self._add(
+                v = self._add(
                     "SEC-005",
                     node,
                     f"`{name}()` runs a shell command assembled at runtime. Use "
                     "`subprocess.run([...], shell=False)` with an argument list.",
                     severity=Severity.HIGH.value,
                 )
+                self._mark_if_tainted(v, arg)
         subprocess_qualified = (
             bare in _SUBPROCESS_FUNCS
             and _func_name(getattr(node.func, "value", None)) in {"subprocess", "sp"}
@@ -357,7 +399,7 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
             if shell_true:
                 cmd = node.args[0] if node.args else None
                 dynamic = _is_dynamic_string(cmd)
-                self._add(
+                v = self._add(
                     "SEC-005",
                     node,
                     (
@@ -369,6 +411,7 @@ class SecurityAndQualityVisitor(ast.NodeVisitor):
                     ),
                     severity=Severity.HIGH.value if dynamic else Severity.MEDIUM.value,
                 )
+                self._mark_if_tainted(v, cmd)
 
         # SEC-006 -- TLS verification disabled
         if name in {"ssl._create_unverified_context", "ssl._create_stdlib_context"}:
