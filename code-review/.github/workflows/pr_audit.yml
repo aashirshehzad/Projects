@@ -1,0 +1,57 @@
+# Hybrid Security & Quality Audit
+#
+# NOTE: GitHub only runs workflows found in `.github/workflows/` at the REPOSITORY
+# root. This project lives in the `code-review/` subdirectory of a monorepo, so to
+# activate it either (a) move this file to `<repo-root>/.github/workflows/` and set
+# `working-directory: code-review`, or (b) split this project into its own repo.
+name: Hybrid Security & Quality Audit
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code-review
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install auditor dependencies
+        run: pip install -r requirements.txt
+
+      - name: Execute hybrid code audit
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python -m app.main diff "origin/${{ github.base_ref }}" \
+            --ci-mode \
+            --github-pr-comments \
+            --sarif audit-results.sarif \
+            --fail-on HIGH
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: code-review/audit-results.sarif

@@ -1,0 +1,8 @@
+# Runtime dependencies for the Hybrid Code Auditor.
+# Mirrors [project.dependencies] in pyproject.toml so CI can `pip install -r requirements.txt`.
+click>=8.1
+rich>=13.7
+pydantic>=2.6
+pydantic-settings>=2.2
+openai>=1.40
+requests>=2.31
