@@ -75,6 +75,16 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` operational error.
   `GITHUB_SHA`).
 - `--sarif PATH` / `--json PATH` - machine-readable output.
 
+## Local web UI
+
+`web/` is a drag-drop frontend (React + Vite) over a FastAPI wrapper: upload a
+`.zip` of a Python project, get the findings, snippets, and optional Gemini
+patches in the browser. Local only. See [web/README.md](web/README.md).
+
+```bash
+python -m uvicorn web.backend.main:app --port 8000    # + `npm run dev` in web/frontend
+```
+
 ## CI
 
 `.github/workflows/pr_audit.yml` runs `diff` on every PR. GitHub only executes

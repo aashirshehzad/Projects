@@ -8,6 +8,10 @@ dist/
 .venv/
 venv/
 
+# Node / web frontend
+node_modules/
+web/frontend/dist/
+
 # Tooling
 .pytest_cache/
 .coverage
