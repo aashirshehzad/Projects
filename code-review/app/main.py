@@ -68,6 +68,10 @@ def _scan_options(fn):
         "--update-baseline", is_flag=True,
         help="Write the current findings to --baseline and exit 0.",
     )(fn)
+    fn = click.option(
+        "--deps", "scan_deps", is_flag=True,
+        help="Also check pinned dependencies against OSV.dev (needs network).",
+    )(fn)
     return fn
 
 
@@ -98,6 +102,11 @@ def _output_options(fn):
 # --------------------------------------------------------------------------- #
 # helpers
 # --------------------------------------------------------------------------- #
+def _code_violations(result: ScanResult) -> list:
+    """Findings the LLM can actually patch -- everything except dependency hits."""
+    return [v for v in result.violations if not v.rule_id.startswith("DEP-")]
+
+
 def _run_remediation(
     result: ScanResult,
     *,
@@ -105,8 +114,9 @@ def _run_remediation(
     model: str | None,
     provider: str | None = None,
 ) -> AuditRemediationReport:
-    if no_llm or not result.violations:
-        return build_unreviewed_report(result.violations)
+    code = _code_violations(result)
+    if no_llm or not code:
+        return build_unreviewed_report(code)
     settings = get_settings()
     overrides: dict[str, str] = {}
     if provider:
@@ -116,12 +126,12 @@ def _run_remediation(
     if overrides:
         settings = settings.model_copy(update=overrides)
     try:
-        return Remediator(settings=settings).remediate(result.violations)
+        return Remediator(settings=settings).remediate(code)
     except AuditorError as exc:
         console.print(f"[yellow]LLM remediation unavailable:[/] {exc}")
         console.print("[yellow]Falling back to static-only report.[/]")
         return build_unreviewed_report(
-            result.violations, reason="unavailable (Stage 3 call failed)"
+            code, reason="unavailable (Stage 3 call failed)"
         )
 
 
@@ -138,6 +148,27 @@ def _load_rule_config(config_path: str | None, *, near: str = ".") -> RuleConfig
             ))
         console.print(f"[dim]rule config ({path}): {'; '.join(bits)}[/]")
     return cfg
+
+
+def _run_dep_scan(result: ScanResult, root: str, *, enabled: bool) -> None:
+    """Append OSV dependency findings to *result*; a scan failure only warns."""
+    if not enabled:
+        return
+    from app.deps import DepScanError, scan_dependencies
+
+    try:
+        hits = scan_dependencies(root)
+    except DepScanError as exc:
+        console.print(f"[yellow]dependency scan skipped:[/] {exc}")
+        return
+    if hits:
+        result.violations.extend(hits)
+        result.violations.sort(
+            key=lambda v: (v.severity.rank, v.file_path, v.line_number, v.rule_id)
+        )
+    console.print(
+        f"[dim]dependency scan: {len(hits)} advisory match(es) via OSV.dev[/]"
+    )
 
 
 def _handle_baseline(
@@ -270,6 +301,7 @@ def audit(
     config_path: str | None,
     baseline_path: str | None,
     update_baseline: bool,
+    scan_deps: bool,
     sarif_path: str | None,
     json_path: str | None,
     pdf_path: str | None,
@@ -281,6 +313,7 @@ def audit(
     try:
         cfg = _load_rule_config(config_path, near=path if Path(path).is_dir() else ".")
         result = scan_path(path, config=cfg)
+        _run_dep_scan(result, path if Path(path).is_dir() else ".", enabled=scan_deps)
         if _handle_baseline(result, baseline_path, update_baseline):
             sys.exit(_EXIT_OK)
         report = _run_remediation(result, no_llm=no_llm, model=model, provider=provider)
@@ -316,6 +349,7 @@ def diff(
     config_path: str | None,
     baseline_path: str | None,
     update_baseline: bool,
+    scan_deps: bool,
     sarif_path: str | None,
     json_path: str | None,
     pdf_path: str | None,
@@ -328,14 +362,16 @@ def diff(
     try:
         cfg = _load_rule_config(config_path, near=repo_root)
         changed_files = changed_python_files(base_branch, repo_root=repo_root)
-        if not changed_files:
+        targets = [Path(repo_root) / f for f in changed_files]
+        result = scan_paths(targets, base_dir=repo_root, config=cfg) if targets else ScanResult()
+        if targets:
+            line_map = changed_line_map(base_branch, repo_root=repo_root)
+            result.violations = filter_to_diff(result.violations, line_map)
+        _run_dep_scan(result, repo_root, enabled=scan_deps)
+        if not result.violations and not scan_deps:
             console.print("[green]No changed Python files vs "
                           f"{base_branch}; nothing to audit.[/]")
             sys.exit(_EXIT_OK)
-        targets = [Path(repo_root) / f for f in changed_files]
-        result = scan_paths(targets, base_dir=repo_root, config=cfg)
-        line_map = changed_line_map(base_branch, repo_root=repo_root)
-        result.violations = filter_to_diff(result.violations, line_map)
         if _handle_baseline(result, baseline_path, update_baseline):
             sys.exit(_EXIT_OK)
 

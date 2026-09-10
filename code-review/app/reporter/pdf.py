@@ -89,6 +89,10 @@ _FRIENDLY_RISK = {
         "The program loads data from an untrusted file in a format that can carry "
         "executable code (marshal, an unsafe YAML loader, a pickled model file)."
     ),
+    "DEP-001": (
+        "A third-party package pinned in this project has a publicly known security "
+        "advisory. Upgrading to the fixed version is usually the whole fix."
+    ),
 }
 
 _MAX_CODE_LINES = 40

@@ -103,6 +103,9 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` operational error.
   summary, severity guide, per-finding explanation + suggested fix).
 - `--config PATH` - `pyproject.toml` with `[tool.code-auditor]` (default `./pyproject.toml`).
 - `--baseline PATH` / `--update-baseline` - suppress pre-existing findings / (re)write the baseline.
+- `--deps` - also check pinned dependencies against **OSV.dev** (needs network;
+  reads `requirements*.txt`, `poetry.lock`, `Pipfile.lock`, `uv.lock`, `pyproject.toml`).
+  Reported as `DEP-001` findings; a scan failure only warns, it never fails the run.
 
 ## Local web UI
 
