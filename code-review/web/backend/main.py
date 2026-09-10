@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from web.backend.service import AuditRequestError, run_audit
 
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB zipped
+MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB zipped (local tool)
 
 app = FastAPI(title="Hybrid Code Auditor (local web UI)", version="1.0.0")
 

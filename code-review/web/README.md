@@ -40,10 +40,11 @@ at <http://localhost:8000>.
 
 | Guard | Value |
 |-------|-------|
-| Upload size | 15 MB (zipped) |
-| Uncompressed `.py` | 50 MB |
-| Entries in archive | 5000 |
+| Upload size | 200 MB (zipped) |
+| Uncompressed `.py` | 150 MB |
+| Entries in archive | 200,000 |
 | Non-`.py` files | ignored |
+| `node_modules` / `.git` / `venv` / `site-packages` | ignored even if zipped |
 
 The AI toggle uses whatever `AUDITOR_LLM_PROVIDER` / key is in `.env` (Gemini by
 default). Leave it off for a free, instant static-only scan.

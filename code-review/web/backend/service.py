@@ -17,9 +17,10 @@ from app.llm_remediation.remediator import Remediator, build_unreviewed_report
 from app.reporter.sarif import to_sarif
 from app.static_scanner.engine import scan_path
 
-# Zip-bomb / abuse guards (this is a local tool, but cheap to be safe).
-MAX_ENTRIES = 5000
-MAX_TOTAL_UNCOMPRESSED = 50 * 1024 * 1024  # 50 MB of .py source
+# Zip-bomb / abuse guards. Generous, since this is a local tool and real repo
+# archives carry node_modules / .git / venv even though we only unpack *.py.
+MAX_ENTRIES = 200_000
+MAX_TOTAL_UNCOMPRESSED = 150 * 1024 * 1024  # 150 MB of .py source
 
 
 class AuditRequestError(ValueError):
@@ -43,6 +44,9 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
             if rel.is_absolute() or ".." in rel.parts:
                 continue  # traversal attempt -- skip silently
             if rel.suffix != ".py":
+                continue
+            # Skip vendored / VCS trees even if the archive includes them.
+            if {"node_modules", ".git", ".venv", "venv", "site-packages"} & set(rel.parts):
                 continue
             total += info.file_size
             if total > MAX_TOTAL_UNCOMPRESSED:
