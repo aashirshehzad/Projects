@@ -2,18 +2,21 @@ import { useCallback, useMemo, useState } from 'react'
 import UploadPanel from './components/UploadPanel.jsx'
 import SummaryBar from './components/SummaryBar.jsx'
 import FindingCard from './components/FindingCard.jsx'
-import { postAudit } from './api.js'
-import { downloadJson } from './download.js'
+import { postAudit, fetchReportPdf } from './api.js'
+import { downloadJson, downloadBlob } from './download.js'
 
 export default function App() {
   const [status, setStatus] = useState('idle') // idle | loading | done | error
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
+  const [projectLabel, setProjectLabel] = useState('Uploaded project')
+  const [pdfBusy, setPdfBusy] = useState(false)
 
   const runAudit = useCallback(async (file, useLlm) => {
     setStatus('loading')
     setError(null)
     setData(null)
+    setProjectLabel(file?.name || 'Uploaded project')
     try {
       const result = await postAudit(file, useLlm)
       setData(result)
@@ -23,6 +26,19 @@ export default function App() {
       setStatus('error')
     }
   }, [])
+
+  const downloadPdf = useCallback(async () => {
+    if (!data) return
+    setPdfBusy(true)
+    try {
+      const blob = await fetchReportPdf({ ...data, project_label: projectLabel })
+      downloadBlob(blob, 'audit-report.pdf')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setPdfBusy(false)
+    }
+  }, [data, projectLabel])
 
   const remediationByKey = useMemo(() => {
     const map = {}
@@ -52,8 +68,10 @@ export default function App() {
         <section className="results">
           <SummaryBar
             data={data}
+            pdfBusy={pdfBusy}
             onDownloadJson={() => downloadJson(data.report ?? data, 'audit-report.json')}
             onDownloadSarif={() => downloadJson(data.sarif, 'audit-results.sarif')}
+            onDownloadPdf={downloadPdf}
           />
 
           {data.llm_error && (

@@ -2,7 +2,8 @@
 
 Drag-drop a `.zip` of a Python project, get the audit back in the browser:
 severity summary, every finding with its snippet, and — if you tick the box —
-Gemini's triage, patch and regression test per finding. Downloadable JSON / SARIF.
+Gemini's triage, patch and regression test per finding. Download the result as a
+**plain-language PDF** (for sharing with non-developers), or as JSON / SARIF.
 
 Uploaded code is only ever parsed with `ast`; it is extracted into a temp dir
 that is deleted before the response returns, and only `.py` entries are unpacked.

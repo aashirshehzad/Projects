@@ -99,3 +99,20 @@ def test_audit_endpoint_empty_upload() -> None:
         data={"llm": "false"},
     )
     assert r.status_code == 400
+
+
+def test_report_pdf_endpoint() -> None:
+    audit = client.post(
+        "/api/audit",
+        files={"file": ("proj.zip", _fixture_zip(), "application/zip")},
+        data={"llm": "false"},
+    ).json()
+    r = client.post("/api/report.pdf", json={**audit, "project_label": "proj.zip"})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:5] == b"%PDF-"
+
+
+def test_report_pdf_rejects_non_audit_payload() -> None:
+    r = client.post("/api/report.pdf", json={"hello": "world"})
+    assert r.status_code == 400

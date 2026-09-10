@@ -62,6 +62,10 @@ def _output_options(fn):
         help="Write the full remediation report as JSON.",
     )(fn)
     fn = click.option(
+        "--pdf", "pdf_path", type=click.Path(dir_okay=False), default=None,
+        help="Write a plain-language PDF report for non-technical readers.",
+    )(fn)
+    fn = click.option(
         "--fail-on",
         type=click.Choice([s.value for s in Severity], case_sensitive=False),
         default="MEDIUM",
@@ -108,10 +112,21 @@ def _emit_outputs(
     *,
     sarif_path: str | None,
     json_path: str | None,
+    pdf_path: str | None = None,
+    project_label: str = "Scanned project",
 ) -> None:
     if sarif_path:
         write_sarif(sarif_path, result, report)
         console.print(f"[dim]SARIF written to {sarif_path}[/]")
+    if pdf_path:
+        from app.reporter.pdf import payload_from_scan, render_pdf
+
+        render_pdf(
+            payload_from_scan(result, report),
+            pdf_path,
+            project_label=project_label,
+        )
+        console.print(f"[dim]PDF report written to {pdf_path}[/]")
     if json_path:
         Path(json_path).write_text(report.model_dump_json(indent=2), encoding="utf-8")
         console.print(f"[dim]JSON report written to {json_path}[/]")
@@ -198,6 +213,7 @@ def audit(
     provider: str | None,
     sarif_path: str | None,
     json_path: str | None,
+    pdf_path: str | None,
     fail_on: str,
     ci_mode: bool,
     github_pr_comments: bool,
@@ -210,7 +226,11 @@ def audit(
             render_scan_summary(result)
         else:
             render_report(result, report)
-        _emit_outputs(result, report, sarif_path=sarif_path, json_path=json_path)
+        _emit_outputs(
+            result, report,
+            sarif_path=sarif_path, json_path=json_path, pdf_path=pdf_path,
+            project_label=str(path),
+        )
         if github_pr_comments:
             _post_to_pr(result, report)
     except AuditorError as exc:
@@ -232,6 +252,7 @@ def diff(
     provider: str | None,
     sarif_path: str | None,
     json_path: str | None,
+    pdf_path: str | None,
     fail_on: str,
     ci_mode: bool,
     github_pr_comments: bool,
@@ -254,7 +275,11 @@ def diff(
             render_scan_summary(result)
         else:
             render_report(result, report)
-        _emit_outputs(result, report, sarif_path=sarif_path, json_path=json_path)
+        _emit_outputs(
+            result, report,
+            sarif_path=sarif_path, json_path=json_path, pdf_path=pdf_path,
+            project_label=f"Changes vs {base_branch}",
+        )
         if github_pr_comments:
             _post_to_pr(result, report)
     except AuditorError as exc:

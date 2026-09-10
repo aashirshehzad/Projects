@@ -33,6 +33,9 @@ patches; results dispatch to console / GitHub PR / SARIF (Stage 4). Full spec:
   un-prefixed aliases). `require_llm_key()` picks the key for the active provider.
 - Errors are `app.core.exceptions.AuditorError` subclasses; the CLI maps them to
   exit code 2. Findings are exit code 1. Clean is 0.
+- Reporters (`app/reporter/`) consume a plain dict payload (`pdf.payload_from_scan`)
+  or `ScanResult` + `AuditRemediationReport`; the web `/api/report.pdf` renders
+  the same payload the browser already holds, so no re-scan.
 - Every new rule needs: an entry in `RULES`, a `visit_*` branch, a vulnerable and
   a clean fixture line, and a `test_individual_patterns` / `test_safe_patterns`
   case.

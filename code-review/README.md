@@ -74,6 +74,8 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` operational error.
   summary comment (needs `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_PR_NUMBER`,
   `GITHUB_SHA`).
 - `--sarif PATH` / `--json PATH` - machine-readable output.
+- `--pdf PATH` - plain-language PDF report for non-technical readers (exec
+  summary, severity guide, per-finding explanation + suggested fix).
 
 ## Local web UI
 

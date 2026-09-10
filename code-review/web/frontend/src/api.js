@@ -16,3 +16,13 @@ export async function postAudit(file, useLlm) {
   }
   return res.json()
 }
+
+export async function fetchReportPdf(payload) {
+  const res = await fetch('/api/report.pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`Could not build PDF (${res.status})`)
+  return res.blob()
+}

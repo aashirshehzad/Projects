@@ -7,10 +7,14 @@ Run from the project root (D:\\Projects\\code-review):
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from web.backend.service import AuditRequestError, run_audit
@@ -51,6 +55,27 @@ async def audit(
         return run_audit(data, use_llm=use_llm)
     except AuditRequestError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/report.pdf")
+def report_pdf(payload: dict[str, Any] = Body(...)) -> Response:
+    """Render an already-computed audit payload as a plain-language PDF."""
+    from app.reporter.pdf import render_pdf
+
+    if "violations" not in payload:
+        raise HTTPException(status_code=400, detail="Payload is not an audit result.")
+    label = str(payload.get("project_label") or "Uploaded project")
+    tmp = Path(tempfile.mkdtemp(prefix="cauditor-pdf-"))
+    try:
+        out = render_pdf(payload, tmp / "report.pdf", project_label=label)
+        pdf_bytes = out.read_bytes()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="audit-report.pdf"'},
+    )
 
 
 # If the frontend has been built (`npm run build`), serve it from the same
