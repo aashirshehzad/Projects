@@ -18,6 +18,16 @@ the job:
 
 The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
+## Supported input
+
+**Python source (`.py`) and Jupyter notebooks (`.ipynb`) only.** The engine is
+built on Python's `ast` module, which cannot parse any other language. A
+notebook's code cells are reassembled into a virtual Python source before the
+same rules run on it (markdown cells and cell/line magics are skipped); every
+finding is tagged with the cell it came from. C/C++/Java/JS and plain-text
+formats (`.md`, config files) are not scanned for vulnerabilities -- see
+`app/deps/` for the one exception (dependency-manifest parsing).
+
 ## Rules
 
 | ID | Sev | Pattern |
@@ -144,7 +154,8 @@ pytest --cov=app           # coverage
 ```
 app/
   core/            config (pydantic-settings) + domain exceptions
-  static_scanner/  ast_rules.py, diff_parser.py, engine.py
+  static_scanner/  ast_rules.py, diff_parser.py, engine.py, notebook.py,
+                   taint.py, ruleconfig.py, baseline.py
   llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py
   main.py          Click CLI: audit / diff / fix

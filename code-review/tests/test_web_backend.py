@@ -54,8 +54,16 @@ def test_service_rejects_non_zip() -> None:
 
 
 def test_service_rejects_archive_without_python() -> None:
-    with pytest.raises(AuditRequestError, match="No .py files"):
+    with pytest.raises(AuditRequestError, match="No .py or .ipynb files"):
         run_audit(_zip({"readme.txt": "hi", "data.json": "{}"}), use_llm=False)
+
+
+def test_service_scans_notebook_from_zip(tmp_path: Path) -> None:
+    nb_text = (FIXTURES / "vulnerable_notebook.ipynb").read_text(encoding="utf-8")
+    out = run_audit(_zip({"proj/demo.ipynb": nb_text}), use_llm=False)
+    assert out["files_scanned"] == 1
+    assert {v["rule_id"] for v in out["violations"]} == {"SEC-001", "SEC-003"}
+    assert all("notebook cell" in v["message"] for v in out["violations"])
 
 
 def test_service_ignores_path_traversal_entries() -> None:

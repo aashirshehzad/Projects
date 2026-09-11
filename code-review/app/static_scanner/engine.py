@@ -11,7 +11,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.core.config import Settings, get_settings
+from app.static_scanner import notebook
 from app.static_scanner.ast_rules import Severity, Violation, scan_source
+
+# Source types the scanner understands. `.ipynb` is JSON, not Python -- its
+# code cells are reassembled into a virtual Python source (see notebook.py)
+# before the exact same rules run on it.
+_SOURCE_SUFFIXES = (".py", ".ipynb")
 
 # Directories that never contain first-party code worth auditing.
 _SKIP_DIRS = {
@@ -19,6 +25,7 @@ _SKIP_DIRS = {
     ".hg",
     ".svn",
     "__pycache__",
+    ".ipynb_checkpoints",
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
@@ -58,19 +65,33 @@ class ScanResult:
         return out
 
 
-def _iter_python_files(root: Path) -> list[Path]:
+def _iter_source_files(root: Path) -> list[Path]:
     if root.is_file():
-        return [root] if root.suffix == ".py" else []
+        return [root] if root.suffix in _SOURCE_SUFFIXES else []
     found: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
         for name in filenames:
-            if not name.endswith(".py"):
+            if not name.endswith(_SOURCE_SUFFIXES):
                 continue
             if name in _SKIP_FILENAMES or any(name.endswith(s) for s in _SKIP_SUFFIXES):
                 continue
             found.append(Path(dirpath) / name)
     return sorted(found)
+
+
+def _load_source(path: Path) -> tuple[str, dict[int, int]] | None:
+    """Return (source text, {virtual line -> notebook cell}) or None if unreadable.
+
+    ``cell_of_line`` is empty for a plain ``.py`` file.
+    """
+    if path.suffix == ".ipynb":
+        nb = notebook.parse_file(path)
+        return (nb.source, nb.cell_of_line) if nb is not None else None
+    try:
+        return path.read_text(encoding="utf-8"), {}
+    except (UnicodeDecodeError, OSError):
+        return None
 
 
 def _attach_snippet(violation: Violation, lines: list[str], context: int) -> None:
@@ -98,13 +119,13 @@ def scan_path(
     base = Path(base_dir) if base_dir else (target if target.is_dir() else target.parent)
 
     result = ScanResult()
-    for path in _iter_python_files(target):
-        try:
-            source = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as exc:
+    for path in _iter_source_files(target):
+        loaded = _load_source(path)
+        if loaded is None:
             result.files_skipped += 1
-            result.parse_errors.append(f"{path}: {exc}")
+            result.parse_errors.append(f"{path}: could not be read")
             continue
+        source, cell_of_line = loaded
 
         try:
             rel = str(path.relative_to(base))
@@ -117,6 +138,9 @@ def scan_path(
             source_lines = source.splitlines()
             for v in violations:
                 _attach_snippet(v, source_lines, settings.context_lines)
+                cell = cell_of_line.get(v.line_number)
+                if cell is not None:
+                    v.message = f"{v.message} (notebook cell {cell})"
         result.violations.extend(violations)
         result.files_scanned += 1
 

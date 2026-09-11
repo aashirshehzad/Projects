@@ -16,6 +16,13 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   no subprocess (except `git` in `diff_parser.py`), no heuristics that guess. If
   a pattern can't be proven from the AST, it isn't a rule. The only networked
   stage is `app/deps/` (OSV.dev, opt-in via `--deps`); keep network there.
+- **Input is Python only** (`.py` and `.ipynb`, both handled through
+  `ast.parse`) -- there is no C/C++/Java/JS engine and none is planned as an
+  extension of this one; that would be a second engine with its own rule set.
+  `static_scanner/notebook.py` reassembles a notebook's code cells into a
+  virtual Python source (markdown + magics stripped/blanked, line count
+  preserved) so `scan_source` runs completely unmodified on it; the engine
+  tags each finding with `(notebook cell N)`.
 - **The LLM sees snippets, never whole files.** Keep `build_user_prompt` lean;
   every token added there multiplies over every violation on every PR.
 - **One LLM call per run.** No agent loop, no tool-calling. A provider

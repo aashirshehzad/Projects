@@ -27,8 +27,11 @@ class AuditRequestError(ValueError):
     """The upload was rejected before scanning (bad zip, no Python, too big)."""
 
 
+_SOURCE_SUFFIXES = {".py", ".ipynb"}
+
+
 def _extract_python_files(zip_path: Path, dest: Path) -> int:
-    """Extract only ``*.py`` entries, with path-traversal and size guards."""
+    """Extract only ``*.py`` / ``*.ipynb`` entries, with path-traversal and size guards."""
     extracted = 0
     total = 0
     with zipfile.ZipFile(zip_path) as zf:
@@ -43,15 +46,17 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
             rel = Path(info.filename)
             if rel.is_absolute() or ".." in rel.parts:
                 continue  # traversal attempt -- skip silently
-            if rel.suffix != ".py":
+            if rel.suffix not in _SOURCE_SUFFIXES:
                 continue
             # Skip vendored / VCS trees even if the archive includes them.
-            if {"node_modules", ".git", ".venv", "venv", "site-packages"} & set(rel.parts):
+            if {"node_modules", ".git", ".venv", "venv", "site-packages",
+                ".ipynb_checkpoints"} & set(rel.parts):
                 continue
             total += info.file_size
             if total > MAX_TOTAL_UNCOMPRESSED:
                 raise AuditRequestError(
-                    "Archive expands to more than 50 MB of Python source."
+                    f"Archive expands to more than "
+                    f"{MAX_TOTAL_UNCOMPRESSED // (1024 * 1024)} MB of source."
                 )
             target = dest / rel
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -59,7 +64,7 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
                 shutil.copyfileobj(src, out, length=64 * 1024)
             extracted += 1
     if extracted == 0:
-        raise AuditRequestError("No .py files found in the archive.")
+        raise AuditRequestError("No .py or .ipynb files found in the archive.")
     return extracted
 
 
