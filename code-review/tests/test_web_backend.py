@@ -54,7 +54,7 @@ def test_service_rejects_non_zip() -> None:
 
 
 def test_service_rejects_archive_without_python() -> None:
-    with pytest.raises(AuditRequestError, match="No .py or .ipynb files"):
+    with pytest.raises(AuditRequestError, match="No .py, .ipynb, .js or .ts files"):
         run_audit(_zip({"readme.txt": "hi", "data.json": "{}"}), use_llm=False)
 
 

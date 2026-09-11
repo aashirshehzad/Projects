@@ -20,11 +20,18 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
 ## Supported input
 
-**Python source (`.py`) and Jupyter notebooks (`.ipynb`) only.** The engine is
-built on Python's `ast` module, which cannot parse any other language. A
-notebook's code cells are reassembled into a virtual Python source before the
-same rules run on it (markdown cells and cell/line magics are skipped); every
-finding is tagged with the cell it came from. C/C++/Java/JS and plain-text
+**Two engines, each deterministic, each its own rule set:**
+
+- **Python** (`.py`, `.ipynb`) -- `app/static_scanner/`, built on the `ast`
+  module. A notebook's code cells are reassembled into a virtual Python source
+  before the same rules run on it (markdown + magics skipped); findings are
+  tagged with the cell they came from.
+- **JavaScript / TypeScript** (`.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.mts`,
+  `.cts`, `.tsx`) -- `app/js_scanner/`, built on `tree-sitter`. Rules JS-001..006
+  (below). JSX/TSX is parsed natively, so `dangerouslySetInnerHTML` is checked too.
+
+Adding either language reused every reporter (console/SARIF/PDF/web) unchanged
+-- both engines emit the same `Violation` type. C/C++/Java and plain-text
 formats (`.md`, config files) are not scanned for vulnerabilities -- see
 `app/deps/` for the one exception (dependency-manifest parsing).
 
@@ -42,15 +49,22 @@ formats (`.md`, config files) are not scanned for vulnerabilities -- see
 | SEC-008 | MEDIUM | `debug=True`, `DEBUG = True`, `ALLOWED_HOSTS = ["*"]`, `host="0.0.0.0"` |
 | SEC-009 | HIGH | `allow_origins=["*"]` (HIGH with credentials), `CORS_ORIGIN_ALLOW_ALL` |
 | SEC-010 | CRITICAL | `yaml.unsafe_load`, `marshal`, `torch.load`, `read_pickle`, `allow_pickle=True` |
+| JS-001 | CRITICAL | `eval()`, `new Function(...)`, `setTimeout`/`setInterval` given a string |
+| JS-002 | HIGH | `.innerHTML`/`.outerHTML` = dynamic value, `document.write`, `insertAdjacentHTML`, `dangerouslySetInnerHTML` |
+| JS-003 | HIGH | `key`/`secret`/`token`/`password = "<literal>"` (`const`, object property, or plain assignment) |
+| JS-004 | HIGH | `child_process.exec`/`execSync` with a runtime-built command |
+| JS-005 | MEDIUM | `Math.random()` seeding a token/secret/session/csrf value |
+| JS-006 | HIGH | `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED = "0"` |
 
-A lightweight **intra-function taint pass** (deterministic, single-file) backs
-SEC-001/002/005: it lets SEC-002 catch a query string assembled a few lines
-before `execute()`, and tags any finding whose argument reaches request data /
-`sys.argv` / `os.environ` / `input()` with `[user input]` (and bumps it to at
-least HIGH).
+A lightweight **intra-function taint pass** (deterministic, single-file, Python
+only for now) backs SEC-001/002/005: it lets SEC-002 catch a query string
+assembled a few lines before `execute()`, and tags any finding whose argument
+reaches request data / `sys.argv` / `os.environ` / `input()` with
+`[user input]` (and bumps it to at least HIGH).
 
-**Suppress a finding** inline with `# nosec` (all rules on that line),
-`# nosec SEC-002`, or `# noqa: SEC-002` (named rules only).
+**Suppress a finding** inline with `# nosec` (Python) / `// nosec` (JS/TS) --
+bare silences every rule on that line, `# nosec SEC-002` / `// nosec JS-002`
+silences a named rule, `# noqa: SEC-002` / `// noqa: JS-002` requires the name.
 
 **Per-project config** in `pyproject.toml`:
 
@@ -154,8 +168,10 @@ pytest --cov=app           # coverage
 ```
 app/
   core/            config (pydantic-settings) + domain exceptions
-  static_scanner/  ast_rules.py, diff_parser.py, engine.py, notebook.py,
-                   taint.py, ruleconfig.py, baseline.py
+  static_scanner/  Python engine: ast_rules.py, diff_parser.py, engine.py,
+                   notebook.py, taint.py, ruleconfig.py, baseline.py
+  js_scanner/      JS/TS engine (tree-sitter): grammar.py, rules.py
+  deps/            OSV.dev dependency scan: manifests.py, osv.py, scanner.py
   llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py
   main.py          Click CLI: audit / diff / fix

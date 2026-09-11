@@ -53,9 +53,10 @@ export default function App() {
       <header className="app-header">
         <h1>Hybrid Code Auditor</h1>
         <p>
-          Upload a <code>.zip</code> of a Python project — <code>.py</code> and{" "}
-          <code>.ipynb</code> files. It is parsed locally with
-          <code> ast</code> — never executed — then checked against rules SEC-001…SEC-010.
+          Upload a <code>.zip</code> — Python (<code>.py</code>, <code>.ipynb</code>) and
+          JavaScript/TypeScript (<code>.js</code>, <code>.jsx</code>, <code>.ts</code>,{" "}
+          <code>.tsx</code>) files. It is parsed locally — never executed — then checked
+          against rules SEC-001…SEC-010 and JS-001…JS-006.
           Optionally, Gemini triages each finding and drafts a patch.
         </p>
       </header>

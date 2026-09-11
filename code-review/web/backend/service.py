@@ -27,11 +27,18 @@ class AuditRequestError(ValueError):
     """The upload was rejected before scanning (bad zip, no Python, too big)."""
 
 
-_SOURCE_SUFFIXES = {".py", ".ipynb"}
+def _source_suffixes() -> set[str]:
+    # Imported lazily (see app.static_scanner.engine._js) rather than at
+    # module load, so import order never determines whether JS/TS is enabled.
+    try:
+        from app.js_scanner import ALL_SUFFIXES
+    except ImportError:
+        ALL_SUFFIXES = ()
+    return {".py", ".ipynb", *ALL_SUFFIXES}
 
 
 def _extract_python_files(zip_path: Path, dest: Path) -> int:
-    """Extract only ``*.py`` / ``*.ipynb`` entries, with path-traversal and size guards."""
+    """Extract only recognised source entries, with path-traversal and size guards."""
     extracted = 0
     total = 0
     with zipfile.ZipFile(zip_path) as zf:
@@ -46,7 +53,7 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
             rel = Path(info.filename)
             if rel.is_absolute() or ".." in rel.parts:
                 continue  # traversal attempt -- skip silently
-            if rel.suffix not in _SOURCE_SUFFIXES:
+            if rel.suffix not in _source_suffixes():
                 continue
             # Skip vendored / VCS trees even if the archive includes them.
             if {"node_modules", ".git", ".venv", "venv", "site-packages",
@@ -64,7 +71,7 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
                 shutil.copyfileobj(src, out, length=64 * 1024)
             extracted += 1
     if extracted == 0:
-        raise AuditRequestError("No .py or .ipynb files found in the archive.")
+        raise AuditRequestError("No .py, .ipynb, .js or .ts files found in the archive.")
     return extracted
 
 

@@ -9,15 +9,42 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from app.core.config import Settings, get_settings
 from app.static_scanner import notebook
 from app.static_scanner.ast_rules import Severity, Violation, scan_source
 
+# `app.js_scanner` imports `app.static_scanner.ast_rules`, which -- the first
+# time anything touches this package -- can re-enter here before this module
+# has finished defining itself. Importing it lazily (only once scanning
+# actually starts, long after every module has finished loading) sidesteps
+# that cycle instead of fighting import order. `None` = not tried yet,
+# `False` = tree-sitter/grammars unavailable, degrade without crashing.
+_js_module: Any = None
+
+
+def _js():
+    global _js_module
+    if _js_module is None:
+        try:
+            import app.js_scanner as mod
+        except ImportError:
+            mod = False
+        _js_module = mod
+    return _js_module or None
+
+
 # Source types the scanner understands. `.ipynb` is JSON, not Python -- its
 # code cells are reassembled into a virtual Python source (see notebook.py)
-# before the exact same rules run on it.
-_SOURCE_SUFFIXES = (".py", ".ipynb")
+# before the exact same rules run on it. JS/TS are a second, independent
+# engine (app.js_scanner) that plugs into the same Violation type.
+_BASE_SUFFIXES = (".py", ".ipynb")
+
+
+def _source_suffixes() -> tuple[str, ...]:
+    js = _js()
+    return _BASE_SUFFIXES + (js.ALL_SUFFIXES if js else ())
 
 # Directories that never contain first-party code worth auditing.
 _SKIP_DIRS = {
@@ -43,7 +70,7 @@ _SKIP_DIRS = {
     ".eggs",
     "migrations",
 }
-_SKIP_SUFFIXES = {".min.py"}
+_SKIP_SUFFIXES = {".min.py", ".min.js", ".d.ts"}
 _SKIP_FILENAMES = {"conftest.py"}  # test wiring, not audit targets
 
 
@@ -66,13 +93,14 @@ class ScanResult:
 
 
 def _iter_source_files(root: Path) -> list[Path]:
+    suffixes = _source_suffixes()
     if root.is_file():
-        return [root] if root.suffix in _SOURCE_SUFFIXES else []
+        return [root] if root.suffix in suffixes else []
     found: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
         for name in filenames:
-            if not name.endswith(_SOURCE_SUFFIXES):
+            if not name.endswith(suffixes):
                 continue
             if name in _SKIP_FILENAMES or any(name.endswith(s) for s in _SKIP_SUFFIXES):
                 continue
@@ -92,6 +120,14 @@ def _load_source(path: Path) -> tuple[str, dict[int, int]] | None:
         return path.read_text(encoding="utf-8"), {}
     except (UnicodeDecodeError, OSError):
         return None
+
+
+def _scan(path: Path, rel: str, source: str, config: object | None) -> list[Violation]:
+    """Dispatch to the engine matching *path*'s suffix."""
+    js = _js()
+    if js is not None and path.suffix in js.ALL_SUFFIXES:
+        return js.scan_js_source(source, rel, config=config)
+    return scan_source(source, rel, config=config)
 
 
 def _attach_snippet(violation: Violation, lines: list[str], context: int) -> None:
@@ -133,7 +169,7 @@ def scan_path(
             rel = str(path)
         rel = rel.replace(os.sep, "/")
 
-        violations = scan_source(source, rel, config=config)
+        violations = _scan(path, rel, source, config)
         if violations:
             source_lines = source.splitlines()
             for v in violations:

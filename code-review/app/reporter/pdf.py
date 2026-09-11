@@ -93,6 +93,33 @@ _FRIENDLY_RISK = {
         "A third-party package pinned in this project has a publicly known security "
         "advisory. Upgrading to the fixed version is usually the whole fix."
     ),
+    "JS-001": (
+        "The page can be made to run whatever JavaScript an attacker supplies -- the "
+        "same class of bug as SEC-001, in the browser or in Node."
+    ),
+    "JS-002": (
+        "A runtime-built value is written straight into the page's HTML, so an "
+        "attacker who controls that value can run their own script in the victim's "
+        "browser (cross-site scripting)."
+    ),
+    "JS-003": (
+        "A password, key, or token is written straight into the source code. Anyone "
+        "who can see the code -- including everyone who can view a website's shipped "
+        "JavaScript -- gets that secret."
+    ),
+    "JS-004": (
+        "A shell command is assembled from untrusted input and run on the server "
+        "(Node's child_process), so an attacker could attach their own commands to it."
+    ),
+    "JS-005": (
+        "A session/CSRF/token value is generated with `Math.random()`, which is "
+        "predictable, not a real source of randomness. An attacker who can guess it "
+        "can impersonate a user or forge a request."
+    ),
+    "JS-006": (
+        "TLS certificate checking is turned off, so the connection is not actually "
+        "secure -- someone on the network can read or change the traffic."
+    ),
 }
 
 _MAX_CODE_LINES = 40

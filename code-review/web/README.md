@@ -5,10 +5,11 @@ severity summary, every finding with its snippet, and â€” if you tick the box â€
 Gemini's triage, patch and regression test per finding. Download the result as a
 **plain-language PDF** (for sharing with non-developers), or as JSON / SARIF.
 
-Uploaded code is only ever parsed with `ast`; it is extracted into a temp dir
-that is deleted before the response returns, and only `.py` / `.ipynb` entries
-are unpacked (notebook code cells are reassembled into Python source; findings
-are tagged with the cell they came from).
+Uploaded code is only ever parsed (`ast` for Python, `tree-sitter` for JS/TS);
+it is extracted into a temp dir that is deleted before the response returns.
+Only `.py` / `.ipynb` / `.js` / `.jsx` / `.mjs` / `.cjs` / `.ts` / `.mts` /
+`.cts` / `.tsx` entries are unpacked (notebook code cells are reassembled into
+Python source; findings are tagged with the cell they came from).
 
 ## Run it (two terminals, from the repo root)
 
