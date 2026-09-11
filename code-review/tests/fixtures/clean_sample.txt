@@ -1,0 +1,9 @@
+# Project notes -- safe examples
+
+password: changeme
+public_name: John Smith
+description = "a normal short sentence here"
+note: remember to buy milk
+retry_count = 5
+timeout=30
+auth_key = simpletext

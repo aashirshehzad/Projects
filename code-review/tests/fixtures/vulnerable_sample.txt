@@ -1,0 +1,11 @@
+# leaked credentials -- do not commit
+AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP
+github_token: ghp_AbCdEfGh12345678IjKlMnOp87654321QrStUvWx
+api_key = "abcd1234EFGH5678"
+DB_PASSWORD=hunter2xyz9
+
+-----BEGIN RSA PRIVATE KEY-----
+MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFErSomeFakeBase64Body...
+-----END RSA PRIVATE KEY-----
+
+session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dQw4w9WgXcQ

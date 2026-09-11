@@ -53,9 +53,9 @@ def test_service_rejects_non_zip() -> None:
         run_audit(b"not a zip at all", use_llm=False)
 
 
-def test_service_rejects_archive_without_python() -> None:
+def test_service_rejects_archive_without_recognised_source() -> None:
     with pytest.raises(AuditRequestError, match="No recognised source files"):
-        run_audit(_zip({"readme.txt": "hi", "data.json": "{}"}), use_llm=False)
+        run_audit(_zip({"readme.md": "hi", "data.json": "{}"}), use_llm=False)
 
 
 def test_service_scans_notebook_from_zip(tmp_path: Path) -> None:
@@ -64,6 +64,13 @@ def test_service_scans_notebook_from_zip(tmp_path: Path) -> None:
     assert out["files_scanned"] == 1
     assert {v["rule_id"] for v in out["violations"]} == {"SEC-001", "SEC-003"}
     assert all("notebook cell" in v["message"] for v in out["violations"])
+
+
+def test_service_scans_txt_from_zip() -> None:
+    txt = (FIXTURES / "vulnerable_sample.txt").read_text(encoding="utf-8")
+    out = run_audit(_zip({"proj/notes.txt": txt}), use_llm=False)
+    assert out["files_scanned"] == 1
+    assert {v["rule_id"] for v in out["violations"]} == {"TXT-001", "TXT-002"}
 
 
 def test_service_ignores_path_traversal_entries() -> None:

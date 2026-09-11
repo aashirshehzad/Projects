@@ -20,7 +20,7 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
 ## Supported input
 
-**Four engines, each deterministic, each its own parser and rule set:**
+**Four language engines (their own parser + rule set) plus one text scanner:**
 
 - **Python** (`.py`, `.ipynb`) -- `app/static_scanner/`, built on the `ast`
   module. A notebook's code cells are reassembled into a virtual Python source
@@ -43,11 +43,21 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
   `java.util.Random` seeding a secret. Same pattern-matching philosophy as
   FindSecBugs/SpotBugs's simple checks, not a full data-flow analyzer.
 
+- **Plain text** (`.txt`) -- `app/text_scanner/`, regex-based (there's no
+  syntax to parse). Rules TXT-001 (a line matches a known secret *format* --
+  AWS/GitHub/Slack/Google/Stripe key, a PEM private-key block, a JWT) and
+  TXT-002 (a `name = value` / `name: value` line whose name looks
+  secret-shaped and whose value isn't obviously a placeholder). Same idea as
+  gitleaks/trufflehog. Line-based matching over prose has a higher
+  false-positive ceiling than an AST match -- review its hits, don't
+  rubber-stamp them.
+
 Adding a language only ever meant a new parser + a new rule module -- every
-reporter (console/SARIF/PDF/web) needed zero changes, because all four
-engines emit the same `Violation` type. Plain-text formats (`.md`, config
-files) are still not scanned for vulnerabilities -- see `app/deps/` for the
-one exception (dependency-manifest parsing).
+reporter (console/SARIF/PDF/web) needed zero changes, because every engine
+(language or text) emits the same `Violation` type. Other plain-text formats
+(`.md`, `.env`, config files) still aren't scanned -- `app/deps/` reads a
+handful of dependency *manifests* for known-CVE versions, which is different
+from scanning their content for secrets.
 
 ## Rules
 
@@ -81,6 +91,8 @@ one exception (dependency-manifest parsing).
 | JAVA-004 | HIGH | `Runtime.getRuntime().exec()` with a runtime-built command |
 | JAVA-005 | MEDIUM | `MessageDigest.getInstance("MD5"/"SHA1")`, `Cipher.getInstance(".../ECB/...")` |
 | JAVA-006 | MEDIUM | `new Random()` seeding a token/secret/session value |
+| TXT-001 | CRIT/HIGH/MED | AWS/GitHub/Slack/Google/Stripe key format, PEM private-key block, JWT |
+| TXT-002 | HIGH | `key`/`secret`/`token`/`password = <value>` in a plain-text file |
 
 A lightweight **intra-function taint pass** (deterministic, single-file, Python
 only for now) backs SEC-001/002/005: it lets SEC-002 catch a query string
@@ -199,6 +211,7 @@ app/
   js_scanner/      JS/TS engine (tree-sitter): grammar.py, rules.py
   c_scanner/       C/C++ engine (tree-sitter): grammar.py, rules.py
   java_scanner/    Java engine (tree-sitter): grammar.py, rules.py
+  text_scanner/    Plain-text secret scan (regex, no parser): rules.py
   deps/            OSV.dev dependency scan: manifests.py, osv.py, scanner.py
   llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py

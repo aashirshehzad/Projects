@@ -173,6 +173,15 @@ _FRIENDLY_RISK = {
         "A session or security-sensitive value is generated with `java.util.Random`, "
         "which is predictable and not a real source of randomness."
     ),
+    "TXT-001": (
+        "This text matches the shape of a real credential -- a cloud key, an API "
+        "token, or a private key. If it's genuine, anyone with access to this file "
+        "(or its git history) can use it as if they were you."
+    ),
+    "TXT-002": (
+        "A line in a plain configuration or notes file assigns what looks like a "
+        "real secret to a key/password/token-named field, in the clear."
+    ),
 }
 
 _MAX_CODE_LINES = 40
