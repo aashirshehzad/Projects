@@ -8,4 +8,8 @@ type, so every reporter (console/SARIF/PDF/web) needs no changes at all.
 from app.js_scanner.grammar import ALL_SUFFIXES, get_parser
 from app.js_scanner.rules import scan_js_source
 
-__all__ = ["scan_js_source", "get_parser", "ALL_SUFFIXES"]
+# Uniform entry point every language engine exposes, so
+# app.static_scanner.engine can dispatch to any of them the same way.
+scan = scan_js_source
+
+__all__ = ["scan_js_source", "scan", "get_parser", "ALL_SUFFIXES"]

@@ -15,36 +15,43 @@ from app.core.config import Settings, get_settings
 from app.static_scanner import notebook
 from app.static_scanner.ast_rules import Severity, Violation, scan_source
 
-# `app.js_scanner` imports `app.static_scanner.ast_rules`, which -- the first
-# time anything touches this package -- can re-enter here before this module
-# has finished defining itself. Importing it lazily (only once scanning
-# actually starts, long after every module has finished loading) sidesteps
-# that cycle instead of fighting import order. `None` = not tried yet,
-# `False` = tree-sitter/grammars unavailable, degrade without crashing.
-_js_module: Any = None
+# Each non-Python language lives in its own package (app.js_scanner,
+# app.c_scanner, ...) that imports app.static_scanner.ast_rules -- which, the
+# first time anything touches this package, can re-enter here before this
+# module has finished defining itself. Importing them lazily (only once
+# scanning actually starts, long after every module has finished loading)
+# sidesteps that cycle instead of fighting import order. A third language is
+# one more entry in _LANGUAGE_MODULES, nothing else changes.
+_LANGUAGE_MODULES = ("app.js_scanner", "app.c_scanner")
+_language_cache: dict[str, Any] = {}
 
 
-def _js():
-    global _js_module
-    if _js_module is None:
-        try:
-            import app.js_scanner as mod
-        except ImportError:
-            mod = False
-        _js_module = mod
-    return _js_module or None
+def _languages() -> list[Any]:
+    """Every language-engine module that imported cleanly, cached after the first call."""
+    for name in _LANGUAGE_MODULES:
+        if name not in _language_cache:
+            try:
+                import importlib
+
+                _language_cache[name] = importlib.import_module(name)
+            except ImportError:
+                _language_cache[name] = None
+    return [mod for mod in _language_cache.values() if mod is not None]
 
 
 # Source types the scanner understands. `.ipynb` is JSON, not Python -- its
 # code cells are reassembled into a virtual Python source (see notebook.py)
-# before the exact same rules run on it. JS/TS are a second, independent
-# engine (app.js_scanner) that plugs into the same Violation type.
+# before the exact same rules run on it. Every other language is a fully
+# independent engine (see _LANGUAGE_MODULES) that plugs into the same
+# Violation type.
 _BASE_SUFFIXES = (".py", ".ipynb")
 
 
 def _source_suffixes() -> tuple[str, ...]:
-    js = _js()
-    return _BASE_SUFFIXES + (js.ALL_SUFFIXES if js else ())
+    suffixes = _BASE_SUFFIXES
+    for lang in _languages():
+        suffixes += lang.ALL_SUFFIXES
+    return suffixes
 
 # Directories that never contain first-party code worth auditing.
 _SKIP_DIRS = {
@@ -124,9 +131,9 @@ def _load_source(path: Path) -> tuple[str, dict[int, int]] | None:
 
 def _scan(path: Path, rel: str, source: str, config: object | None) -> list[Violation]:
     """Dispatch to the engine matching *path*'s suffix."""
-    js = _js()
-    if js is not None and path.suffix in js.ALL_SUFFIXES:
-        return js.scan_js_source(source, rel, config=config)
+    for lang in _languages():
+        if path.suffix in lang.ALL_SUFFIXES:
+            return lang.scan(source, rel, config=config)
     return scan_source(source, rel, config=config)
 
 

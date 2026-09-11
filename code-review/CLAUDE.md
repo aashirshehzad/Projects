@@ -16,23 +16,31 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   no subprocess (except `git` in `diff_parser.py`), no heuristics that guess. If
   a pattern can't be proven from the AST, it isn't a rule. The only networked
   stage is `app/deps/` (OSV.dev, opt-in via `--deps`); keep network there.
-- **Two engines, each with its own parser and rule set, sharing one `Violation`
-  type.** Python (`app/static_scanner/`, `ast.parse`, rules SEC-*) and
-  JavaScript/TypeScript (`app/js_scanner/`, `tree-sitter`, rules JS-*).
-  `static_scanner/notebook.py` reassembles a notebook's code cells into a
-  virtual Python source (markdown + magics stripped/blanked, line count
-  preserved) so `scan_source` runs completely unmodified on it; the engine
-  tags each finding with `(notebook cell N)`. Adding a **third** language is
-  the same shape as JS: its own parser + rule module producing `Violation`s --
-  never branches bolted onto an existing engine. C/C++/Java are not planned;
-  raise it explicitly before starting one, it's a multi-day subsystem.
-- **`app/static_scanner/engine.py` imports `app.js_scanner` lazily** (inside
-  `_js()`, called only when a scan actually runs), not at module top level.
-  Importing it eagerly reintroduces a real circular import: `app.js_scanner`
-  needs `app.static_scanner.ast_rules`, which -- the first time anything
-  touches the `static_scanner` package -- can re-enter `engine.py` before it
-  has finished defining itself. If you add a third language engine, wire it
-  in the same lazy way.
+- **Three engines, each with its own parser and rule set, sharing one
+  `Violation` type.** Python (`app/static_scanner/`, `ast.parse`, rules SEC-*),
+  JavaScript/TypeScript (`app/js_scanner/`, `tree-sitter`, rules JS-*), C/C++
+  (`app/c_scanner/`, `tree-sitter`, rules C-*). `static_scanner/notebook.py`
+  reassembles a notebook's code cells into a virtual Python source (markdown +
+  magics stripped/blanked, line count preserved) so `scan_source` runs
+  completely unmodified on it; the engine tags each finding with
+  `(notebook cell N)`. The C engine is deliberately shallow -- "banned
+  function" / non-literal-format-string checks only, no pointer/data-flow
+  analysis, no use-after-free/double-free detection; that would be a much
+  bigger undertaking (real memory-safety analysis) and is out of scope. Adding
+  a **fourth** language (Java is the obvious next one) is the same shape: its
+  own parser + rule module producing `Violation`s in `_DISPATCH`, registered
+  in `app/static_scanner/engine.py`'s `_LANGUAGE_MODULES` tuple -- never
+  branches bolted onto an existing engine.
+- **`app/static_scanner/engine.py` imports every language engine lazily**
+  (inside `_languages()`, called only when a scan actually runs), not at
+  module top level. Importing one eagerly reintroduces a real circular
+  import: a language package needs `app.static_scanner.ast_rules`, which --
+  the first time anything touches the `static_scanner` package -- can
+  re-enter `engine.py` before it has finished defining itself. A new language
+  module must expose `ALL_SUFFIXES` and a `scan(source, file_path, *,
+  config=None)` entry point (see `app/js_scanner/__init__.py` /
+  `app/c_scanner/__init__.py`) and be added to `_LANGUAGE_MODULES` -- nothing
+  else in `engine.py` changes.
 - **The LLM sees snippets, never whole files.** Keep `build_user_prompt` lean;
   every token added there multiplies over every violation on every PR.
 - **One LLM call per run.** No agent loop, no tool-calling. A provider
@@ -56,8 +64,8 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   or `ScanResult` + `AuditRemediationReport`; the web `/api/report.pdf` renders
   the same payload the browser already holds, so no re-scan.
 - Every new rule needs: an entry in `RULES`, a `visit_*` branch (Python) or a
-  `_check_*` handler in `_DISPATCH` (JS), a vulnerable and a clean fixture line,
-  and a `test_individual_patterns` / `test_safe_patterns` case.
+  `_check_*` handler in `_DISPATCH` (JS/C), a vulnerable and a clean fixture
+  line, and a `test_individual_patterns` / `test_safe_patterns` case.
 - Suppression is honoured in `scan_source`: `# nosec` (all rules) / `# nosec SEC-00X`
   / `# noqa: SEC-00X` (named only). Project config is `RuleConfig` from
   `[tool.code-auditor]` in pyproject (disabled_rules + severity overrides);

@@ -28,13 +28,17 @@ class AuditRequestError(ValueError):
 
 
 def _source_suffixes() -> set[str]:
-    # Imported lazily (see app.static_scanner.engine._js) rather than at
-    # module load, so import order never determines whether JS/TS is enabled.
-    try:
-        from app.js_scanner import ALL_SUFFIXES
-    except ImportError:
-        ALL_SUFFIXES = ()
-    return {".py", ".ipynb", *ALL_SUFFIXES}
+    # Imported lazily (see app.static_scanner.engine._languages) rather than
+    # at module load, so import order never determines which languages are on.
+    suffixes = {".py", ".ipynb"}
+    for module_name in ("app.js_scanner", "app.c_scanner"):
+        try:
+            import importlib
+
+            suffixes.update(importlib.import_module(module_name).ALL_SUFFIXES)
+        except ImportError:
+            pass
+    return suffixes
 
 
 def _extract_python_files(zip_path: Path, dest: Path) -> int:
@@ -71,7 +75,9 @@ def _extract_python_files(zip_path: Path, dest: Path) -> int:
                 shutil.copyfileobj(src, out, length=64 * 1024)
             extracted += 1
     if extracted == 0:
-        raise AuditRequestError("No .py, .ipynb, .js or .ts files found in the archive.")
+        raise AuditRequestError(
+            "No recognised source files (.py, .ipynb, .js/.ts, .c/.cpp) found in the archive."
+        )
     return extracted
 
 

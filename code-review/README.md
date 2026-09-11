@@ -20,7 +20,7 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
 ## Supported input
 
-**Two engines, each deterministic, each its own rule set:**
+**Three engines, each deterministic, each its own parser and rule set:**
 
 - **Python** (`.py`, `.ipynb`) -- `app/static_scanner/`, built on the `ast`
   module. A notebook's code cells are reassembled into a virtual Python source
@@ -29,11 +29,19 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 - **JavaScript / TypeScript** (`.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.mts`,
   `.cts`, `.tsx`) -- `app/js_scanner/`, built on `tree-sitter`. Rules JS-001..006
   (below). JSX/TSX is parsed natively, so `dangerouslySetInnerHTML` is checked too.
+- **C / C++** (`.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`) --
+  `app/c_scanner/`, also `tree-sitter`. Rules C-001..006 (below): banned unbounded
+  string functions, format-string bugs, hardcoded secrets, command injection,
+  weak randomness, unbounded `alloca`. This is the same "banned function" /
+  non-literal-format-string style real C linters (flawfinder, cppcheck) use
+  without full pointer/data-flow analysis -- it is **not** a memory-safety
+  analyzer (no use-after-free, no double-free, no real taint).
 
-Adding either language reused every reporter (console/SARIF/PDF/web) unchanged
--- both engines emit the same `Violation` type. C/C++/Java and plain-text
-formats (`.md`, config files) are not scanned for vulnerabilities -- see
-`app/deps/` for the one exception (dependency-manifest parsing).
+Adding a language only ever meant a new parser + a new rule module -- every
+reporter (console/SARIF/PDF/web) needed zero changes, because all three
+engines emit the same `Violation` type. Java and plain-text formats (`.md`,
+config files) are still not scanned for vulnerabilities -- see `app/deps/` for
+the one exception (dependency-manifest parsing).
 
 ## Rules
 
@@ -55,6 +63,12 @@ formats (`.md`, config files) are not scanned for vulnerabilities -- see
 | JS-004 | HIGH | `child_process.exec`/`execSync` with a runtime-built command |
 | JS-005 | MEDIUM | `Math.random()` seeding a token/secret/session/csrf value |
 | JS-006 | HIGH | `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED = "0"` |
+| C-001 | CRIT/HIGH | `gets` (always CRITICAL), `strcpy`/`strcat`/`sprintf`/`vsprintf` |
+| C-002 | HIGH | `printf`/`fprintf`/`syslog`/`scanf` family with a non-literal format arg |
+| C-003 | HIGH | `key`/`secret`/`token`/`password = "<literal>"` or `#define ... "<literal>"` |
+| C-004 | HIGH | `system()`/`popen()` with a runtime-built command |
+| C-005 | MEDIUM | `rand()` seeding a token/secret/key/session value |
+| C-006 | MEDIUM | `alloca()` with a non-constant size |
 
 A lightweight **intra-function taint pass** (deterministic, single-file, Python
 only for now) backs SEC-001/002/005: it lets SEC-002 catch a query string
@@ -171,6 +185,7 @@ app/
   static_scanner/  Python engine: ast_rules.py, diff_parser.py, engine.py,
                    notebook.py, taint.py, ruleconfig.py, baseline.py
   js_scanner/      JS/TS engine (tree-sitter): grammar.py, rules.py
+  c_scanner/       C/C++ engine (tree-sitter): grammar.py, rules.py
   deps/            OSV.dev dependency scan: manifests.py, osv.py, scanner.py
   llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py

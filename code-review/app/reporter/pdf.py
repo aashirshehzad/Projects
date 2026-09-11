@@ -120,6 +120,32 @@ _FRIENDLY_RISK = {
         "TLS certificate checking is turned off, so the connection is not actually "
         "secure -- someone on the network can read or change the traffic."
     ),
+    "C-001": (
+        "The program copies data into a fixed-size buffer with no limit and no "
+        "safety check. An oversized input overwrites adjacent memory -- a classic "
+        "buffer overflow, often exploitable to run attacker-supplied code."
+    ),
+    "C-002": (
+        "A runtime value is used as a printf-style format string. If an attacker "
+        "controls it, format specifiers like %n can read or corrupt memory."
+    ),
+    "C-003": (
+        "A password, key, or token is written straight into the source code -- and "
+        "for C, that means it is baked directly into the compiled binary, where it "
+        "can be extracted with a hex editor even without the source."
+    ),
+    "C-004": (
+        "A shell command is assembled from untrusted input and executed, so an "
+        "attacker could attach their own commands to it."
+    ),
+    "C-005": (
+        "A session or security-sensitive value is generated with rand(), which is "
+        "predictable and not a real source of randomness."
+    ),
+    "C-006": (
+        "Memory is allocated on the stack with a size that isn't fixed at compile "
+        "time. If that size is attacker-influenced, it can overflow the stack."
+    ),
 }
 
 _MAX_CODE_LINES = 40
