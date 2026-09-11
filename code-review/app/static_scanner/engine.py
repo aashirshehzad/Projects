@@ -22,7 +22,7 @@ from app.static_scanner.ast_rules import Severity, Violation, scan_source
 # scanning actually starts, long after every module has finished loading)
 # sidesteps that cycle instead of fighting import order. A third language is
 # one more entry in _LANGUAGE_MODULES, nothing else changes.
-_LANGUAGE_MODULES = ("app.js_scanner", "app.c_scanner")
+_LANGUAGE_MODULES = ("app.js_scanner", "app.c_scanner", "app.java_scanner")
 _language_cache: dict[str, Any] = {}
 
 

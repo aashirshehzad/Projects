@@ -31,7 +31,7 @@ def _source_suffixes() -> set[str]:
     # Imported lazily (see app.static_scanner.engine._languages) rather than
     # at module load, so import order never determines which languages are on.
     suffixes = {".py", ".ipynb"}
-    for module_name in ("app.js_scanner", "app.c_scanner"):
+    for module_name in ("app.js_scanner", "app.c_scanner", "app.java_scanner"):
         try:
             import importlib
 

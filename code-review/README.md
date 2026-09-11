@@ -20,7 +20,7 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
 
 ## Supported input
 
-**Three engines, each deterministic, each its own parser and rule set:**
+**Four engines, each deterministic, each its own parser and rule set:**
 
 - **Python** (`.py`, `.ipynb`) -- `app/static_scanner/`, built on the `ast`
   module. A notebook's code cells are reassembled into a virtual Python source
@@ -36,12 +36,18 @@ The LLM only ever sees the +/-5 line snippet around a violation, never the file.
   non-literal-format-string style real C linters (flawfinder, cppcheck) use
   without full pointer/data-flow analysis -- it is **not** a memory-safety
   analyzer (no use-after-free, no double-free, no real taint).
+- **Java** (`.java`) -- `app/java_scanner/`, also `tree-sitter`. Rules
+  JAVA-001..006 (below): unsafe `ObjectInputStream.readObject()`
+  deserialization, concatenated-SQL `Statement` calls, hardcoded secrets,
+  `Runtime.exec()` command injection, weak `MessageDigest`/`Cipher` choices,
+  `java.util.Random` seeding a secret. Same pattern-matching philosophy as
+  FindSecBugs/SpotBugs's simple checks, not a full data-flow analyzer.
 
 Adding a language only ever meant a new parser + a new rule module -- every
-reporter (console/SARIF/PDF/web) needed zero changes, because all three
-engines emit the same `Violation` type. Java and plain-text formats (`.md`,
-config files) are still not scanned for vulnerabilities -- see `app/deps/` for
-the one exception (dependency-manifest parsing).
+reporter (console/SARIF/PDF/web) needed zero changes, because all four
+engines emit the same `Violation` type. Plain-text formats (`.md`, config
+files) are still not scanned for vulnerabilities -- see `app/deps/` for the
+one exception (dependency-manifest parsing).
 
 ## Rules
 
@@ -69,6 +75,12 @@ the one exception (dependency-manifest parsing).
 | C-004 | HIGH | `system()`/`popen()` with a runtime-built command |
 | C-005 | MEDIUM | `rand()` seeding a token/secret/key/session value |
 | C-006 | MEDIUM | `alloca()` with a non-constant size |
+| JAVA-001 | CRITICAL | `ObjectInputStream.readObject()` |
+| JAVA-002 | HIGH | `Statement.executeQuery/executeUpdate/execute` with a `+`-built query |
+| JAVA-003 | HIGH | `key`/`secret`/`token`/`password = "<literal>"` |
+| JAVA-004 | HIGH | `Runtime.getRuntime().exec()` with a runtime-built command |
+| JAVA-005 | MEDIUM | `MessageDigest.getInstance("MD5"/"SHA1")`, `Cipher.getInstance(".../ECB/...")` |
+| JAVA-006 | MEDIUM | `new Random()` seeding a token/secret/session value |
 
 A lightweight **intra-function taint pass** (deterministic, single-file, Python
 only for now) backs SEC-001/002/005: it lets SEC-002 catch a query string
@@ -186,6 +198,7 @@ app/
                    notebook.py, taint.py, ruleconfig.py, baseline.py
   js_scanner/      JS/TS engine (tree-sitter): grammar.py, rules.py
   c_scanner/       C/C++ engine (tree-sitter): grammar.py, rules.py
+  java_scanner/    Java engine (tree-sitter): grammar.py, rules.py
   deps/            OSV.dev dependency scan: manifests.py, osv.py, scanner.py
   llm_remediation/ schemas.py, prompts.py, providers.py (gemini/openai), remediator.py
   reporter/        console.py, github_pr.py, sarif.py

@@ -146,6 +146,33 @@ _FRIENDLY_RISK = {
         "Memory is allocated on the stack with a size that isn't fixed at compile "
         "time. If that size is attacker-influenced, it can overflow the stack."
     ),
+    "JAVA-001": (
+        "The program deserializes a byte stream into live Java objects. A crafted "
+        "stream can construct arbitrary classes and chain their side effects into "
+        "remote code execution -- one of the most serious flaws a Java app can have."
+    ),
+    "JAVA-002": (
+        "A SQL query is built by gluing a value onto a string, so an attacker "
+        "could read, change, or delete data they should not be able to touch "
+        "(SQL injection)."
+    ),
+    "JAVA-003": (
+        "A password, key, or token is written straight into the source code. "
+        "Anyone who can see the code -- or decompile the shipped `.class`/`.jar` "
+        "file -- gets that secret."
+    ),
+    "JAVA-004": (
+        "A shell command is assembled from untrusted input and executed, so an "
+        "attacker could attach their own commands to it."
+    ),
+    "JAVA-005": (
+        "A weak or broken cryptographic choice is in use (an outdated hash or "
+        "ECB encryption mode). It can be forged or reveals patterns in the data."
+    ),
+    "JAVA-006": (
+        "A session or security-sensitive value is generated with `java.util.Random`, "
+        "which is predictable and not a real source of randomness."
+    ),
 }
 
 _MAX_CODE_LINES = 40

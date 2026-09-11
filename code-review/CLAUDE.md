@@ -16,21 +16,24 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   no subprocess (except `git` in `diff_parser.py`), no heuristics that guess. If
   a pattern can't be proven from the AST, it isn't a rule. The only networked
   stage is `app/deps/` (OSV.dev, opt-in via `--deps`); keep network there.
-- **Three engines, each with its own parser and rule set, sharing one
+- **Four engines, each with its own parser and rule set, sharing one
   `Violation` type.** Python (`app/static_scanner/`, `ast.parse`, rules SEC-*),
   JavaScript/TypeScript (`app/js_scanner/`, `tree-sitter`, rules JS-*), C/C++
-  (`app/c_scanner/`, `tree-sitter`, rules C-*). `static_scanner/notebook.py`
-  reassembles a notebook's code cells into a virtual Python source (markdown +
-  magics stripped/blanked, line count preserved) so `scan_source` runs
-  completely unmodified on it; the engine tags each finding with
-  `(notebook cell N)`. The C engine is deliberately shallow -- "banned
-  function" / non-literal-format-string checks only, no pointer/data-flow
-  analysis, no use-after-free/double-free detection; that would be a much
-  bigger undertaking (real memory-safety analysis) and is out of scope. Adding
-  a **fourth** language (Java is the obvious next one) is the same shape: its
-  own parser + rule module producing `Violation`s in `_DISPATCH`, registered
-  in `app/static_scanner/engine.py`'s `_LANGUAGE_MODULES` tuple -- never
-  branches bolted onto an existing engine.
+  (`app/c_scanner/`, `tree-sitter`, rules C-*), Java (`app/java_scanner/`,
+  `tree-sitter`, rules JAVA-*). `static_scanner/notebook.py` reassembles a
+  notebook's code cells into a virtual Python source (markdown + magics
+  stripped/blanked, line count preserved) so `scan_source` runs completely
+  unmodified on it; the engine tags each finding with `(notebook cell N)`. The
+  C and Java engines are deliberately shallow -- "banned function" /
+  non-literal-format-string / obviously-unsafe-API checks only, the same
+  pattern-matching approach flawfinder/cppcheck (C) and FindSecBugs/SpotBugs
+  (Java) use without full data-flow analysis. No pointer/alias tracking, no
+  use-after-free/double-free (C), no real taint (Java) -- that would be a much
+  bigger undertaking and is out of scope. Adding a **fifth** language is the
+  same shape: its own parser + rule module producing `Violation`s in
+  `_DISPATCH`, registered in `app/static_scanner/engine.py`'s
+  `_LANGUAGE_MODULES` tuple (and `web/backend/service.py`'s mirror list) --
+  never branches bolted onto an existing engine.
 - **`app/static_scanner/engine.py` imports every language engine lazily**
   (inside `_languages()`, called only when a scan actually runs), not at
   module top level. Importing one eagerly reintroduces a real circular
@@ -64,7 +67,7 @@ in Downloads (covers SEC-001..005; 006-010 added later).
   or `ScanResult` + `AuditRemediationReport`; the web `/api/report.pdf` renders
   the same payload the browser already holds, so no re-scan.
 - Every new rule needs: an entry in `RULES`, a `visit_*` branch (Python) or a
-  `_check_*` handler in `_DISPATCH` (JS/C), a vulnerable and a clean fixture
+  `_check_*` handler in `_DISPATCH` (JS/C/Java), a vulnerable and a clean fixture
   line, and a `test_individual_patterns` / `test_safe_patterns` case.
 - Suppression is honoured in `scan_source`: `# nosec` (all rules) / `# nosec SEC-00X`
   / `# noqa: SEC-00X` (named only). Project config is `RuleConfig` from

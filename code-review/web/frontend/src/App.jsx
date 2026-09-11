@@ -55,10 +55,10 @@ export default function App() {
         <p>
           Upload a <code>.zip</code> — Python (<code>.py</code>, <code>.ipynb</code>),
           JavaScript/TypeScript (<code>.js</code>, <code>.jsx</code>, <code>.ts</code>,{" "}
-          <code>.tsx</code>), and C/C++ (<code>.c</code>, <code>.h</code>, <code>.cpp</code>)
-          files. It is parsed locally — never executed — then checked against rules
-          SEC-001…SEC-010, JS-001…JS-006, and C-001…C-006.
-          Optionally, Gemini triages each finding and drafts a patch.
+          <code>.tsx</code>), C/C++ (<code>.c</code>, <code>.h</code>, <code>.cpp</code>), and
+          Java (<code>.java</code>) files. It is parsed locally — never executed — then
+          checked against rules SEC-001…SEC-010, JS-001…JS-006, C-001…C-006, and
+          JAVA-001…JAVA-006. Optionally, Gemini triages each finding and drafts a patch.
         </p>
       </header>
 

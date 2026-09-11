@@ -6,12 +6,12 @@ Gemini's triage, patch and regression test per finding. Download the result as a
 **plain-language PDF** (for sharing with non-developers), or as JSON / SARIF.
 
 Uploaded code is only ever parsed (`ast` for Python, `tree-sitter` for
-JS/TS/C/C++); it is extracted into a temp dir that is deleted before the
+JS/TS/C/C++/Java); it is extracted into a temp dir that is deleted before the
 response returns. Only recognised source suffixes are unpacked -- `.py`,
-`.ipynb`, `.js`/`.jsx`/`.mjs`/`.cjs`, `.ts`/`.mts`/`.cts`/`.tsx`, and
-`.c`/`.h`/`.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx` (notebook code cells are
-reassembled into Python source; findings are tagged with the cell they came
-from).
+`.ipynb`, `.js`/`.jsx`/`.mjs`/`.cjs`, `.ts`/`.mts`/`.cts`/`.tsx`,
+`.c`/`.h`/`.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, and `.java` (notebook code
+cells are reassembled into Python source; findings are tagged with the cell
+they came from).
 
 ## Run it (two terminals, from the repo root)
 
