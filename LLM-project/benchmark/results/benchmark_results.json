@@ -1,0 +1,70 @@
+{
+  "requests": 200,
+  "concurrency": 10,
+  "upstream": "mock",
+  "proxy_config": {
+    "similarity_threshold": 0.92,
+    "entity_guard": true,
+    "ttl_seconds": 86400,
+    "max_entries": 2000
+  },
+  "latency_ms": {
+    "direct": {
+      "p50": 1874.376999985543,
+      "p95": 2433.3549250048236,
+      "p99": 2483.32870898128,
+      "mean": 1858.1818009997369
+    },
+    "proxy_all": {
+      "p50": 1693.4494000015547,
+      "p95": 2496.716145017126,
+      "p99": 2518.95245701744,
+      "mean": 1560.6459125013498
+    },
+    "proxy_hits": {
+      "p50": 21.70859999023378,
+      "p95": 46.461780008394264,
+      "p99": 65.65827399899709,
+      "mean": 26.841474284550973
+    },
+    "proxy_hits_server_side": {
+      "p50": 16.46,
+      "p95": 38.870999999999995,
+      "p99": 59.5695999999999,
+      "mean": 21.368857142857145
+    },
+    "proxy_misses": {
+      "p50": 1833.4252000204287,
+      "p95": 2500.7947400037665,
+      "p99": 2522.5594520103186,
+      "mean": 1885.998369092792
+    }
+  },
+  "cache": {
+    "hits": 35,
+    "hit_rate": 0.175,
+    "correct_hits": 34,
+    "false_hits": 1,
+    "precision": 0.9714285714285714,
+    "paraphrase_recall": 0.5666666666666667,
+    "false_hit_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  "cost": {
+    "pricing_usd_per_1m": {
+      "input": 0.05,
+      "output": 0.08
+    },
+    "direct_tokens": 29090,
+    "proxy_tokens": 23897,
+    "token_reduction": 0.17851495359229974,
+    "direct_usd": 0.00227185,
+    "proxy_usd": 0.0018676300000000001,
+    "cost_reduction": 0.1779254792349847
+  }
+}

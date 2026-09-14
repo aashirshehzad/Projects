@@ -1,0 +1,9 @@
+# Optional: Qdrant server for caches beyond a few thousand entries.
+# Then run the proxy with QDRANT_URL=http://localhost:6333
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_server_data:/qdrant/storage

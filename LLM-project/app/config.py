@@ -18,7 +18,11 @@ def _bool(name: str, default: bool) -> bool:
 @dataclass(frozen=True)
 class Settings:
     collection_name: str = os.getenv("CACHE_COLLECTION", "llm_semantic_cache")
-    qdrant_path: str = os.getenv("QDRANT_PATH", "./qdrant_storage")  # ":memory:" for ephemeral
+    # Set QDRANT_URL (e.g. http://localhost:6333) to use a Qdrant server; otherwise
+    # Qdrant runs embedded at QDRANT_PATH (":memory:" for ephemeral).
+    qdrant_url: str = os.getenv("QDRANT_URL", "")
+    qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
+    qdrant_path: str = os.getenv("QDRANT_PATH", "./qdrant_storage")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
     embedding_dim: int = int(os.getenv("EMBEDDING_DIM", "384"))
 
@@ -28,7 +32,9 @@ class Settings:
 
     # Phase 2: expiry + capacity eviction
     ttl_seconds: int = int(os.getenv("CACHE_TTL_SECONDS", str(24 * 3600)))
-    max_entries: int = int(os.getenv("CACHE_MAX_ENTRIES", "50000"))
+    # Embedded Qdrant evaluates filters in Python, one point at a time: filtered
+    # lookups cost ~9ms per 1k entries. Keep it small; a server has no such limit.
+    max_entries: int = int(os.getenv("CACHE_MAX_ENTRIES", "1000000" if os.getenv("QDRANT_URL") else "2000"))
     eviction_interval_seconds: int = int(os.getenv("EVICTION_INTERVAL_SECONDS", "300"))
 
     # Upstream: "mock", "groq", "openai", "ollama" or any OpenAI-compatible URL via UPSTREAM_URL

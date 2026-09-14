@@ -5,10 +5,11 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.cache import SemanticCache
+from app.cache import Partition, SemanticCache
 from app.config import Settings
 from app.guard import entities_match, extract_entities
 from app.main import create_app
+from app.schemas import Usage
 from app.upstream import UpstreamClient
 
 
@@ -114,14 +115,22 @@ def test_ttl_expired_entries_are_not_served_and_get_evicted():
 
 
 def test_capacity_eviction_drops_least_recently_used():
-    client, cache = make_client(max_entries=2)
-    with client:
-        for q in ("Explain Docker", "Explain Kubernetes", "Explain Terraform"):
-            ask(client, q)
-        ask(client, "explain docker")  # touch the oldest so it survives
-        assert client.post("/cache/evict").json()["over_capacity"] == 1
-        assert ask(client, "explain docker").json()["source"] == "CACHE_HIT"
-        assert ask(client, "explain kubernetes").json()["source"] == "UPSTREAM_LLM"
+    # Driven at the cache level: over HTTP, touch() is a post-response background
+    # task, so an immediate /cache/evict could race it.
+    cfg = replace(BASE, max_entries=2)
+    cache = SemanticCache(cfg, embedder=ConstantEmbedder())
+    part = Partition.from_request([], "m", None)
+    vec = cache.embed("x")
+    ids = {}
+    for q in ("Explain Docker", "Explain Kubernetes", "Explain Terraform", None):
+        time.sleep(0.03)  # time.time() ticks at ~15.6ms on Windows/Python 3.12; avoid timestamp ties
+        if q:
+            ids[q] = cache.store(vec, q, f"answer {q}", part, Usage())
+    cache.touch(ids["Explain Docker"])
+
+    assert cache.evict() == {"expired": 0, "over_capacity": 1}
+    assert cache.lookup(vec, "explain docker", part)[0].response == "answer Explain Docker"
+    assert cache.lookup(vec, "explain kubernetes", part)[0] is None
 
 
 def test_bypass_skips_cache_entirely():
@@ -150,6 +159,8 @@ def test_rejects_request_without_user_message():
         ("Why does Earth have seasons?", "What causes the seasons on Earth?", True),
         ("What is 15% of 80?", "What is 20% of 80?", False),
         ("how to use pandas groupby", "Pandas groupby usage", True),
+        ("REST vs GraphQL: how do they differ?", "What is the difference between REST and GraphQL?", True),
+        ("World War I causes", "What caused World War II?", False),
     ],
 )
 def test_entity_guard_cases(a, b, same):

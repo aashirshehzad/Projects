@@ -1,0 +1,2910 @@
+[
+  {
+    "threshold": 0.8,
+    "guard": false,
+    "hits": 76,
+    "correct_hits": 57,
+    "false_hits": 19,
+    "recall": 0.95,
+    "precision": 0.75,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How far is Mars from Earth?",
+        "served": "How far is the Moon from Earth?",
+        "score": 0.8056
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "Who was the first president of France?",
+        "served": "Who was the first president of the United States?",
+        "score": 0.8032
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.805,
+    "guard": false,
+    "hits": 75,
+    "correct_hits": 57,
+    "false_hits": 18,
+    "recall": 0.95,
+    "precision": 0.76,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How far is Mars from Earth?",
+        "served": "How far is the Moon from Earth?",
+        "score": 0.8056
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.81,
+    "guard": false,
+    "hits": 74,
+    "correct_hits": 57,
+    "false_hits": 17,
+    "recall": 0.95,
+    "precision": 0.7702702702702703,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.815,
+    "guard": false,
+    "hits": 73,
+    "correct_hits": 56,
+    "false_hits": 17,
+    "recall": 0.9333333333333333,
+    "precision": 0.7671232876712328,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.82,
+    "guard": false,
+    "hits": 71,
+    "correct_hits": 54,
+    "false_hits": 17,
+    "recall": 0.9,
+    "precision": 0.7605633802816901,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.825,
+    "guard": false,
+    "hits": 71,
+    "correct_hits": 54,
+    "false_hits": 17,
+    "recall": 0.9,
+    "precision": 0.7605633802816901,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.83,
+    "guard": false,
+    "hits": 70,
+    "correct_hits": 53,
+    "false_hits": 17,
+    "recall": 0.8833333333333333,
+    "precision": 0.7571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.835,
+    "guard": false,
+    "hits": 70,
+    "correct_hits": 53,
+    "false_hits": 17,
+    "recall": 0.8833333333333333,
+    "precision": 0.7571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.84,
+    "guard": false,
+    "hits": 70,
+    "correct_hits": 53,
+    "false_hits": 17,
+    "recall": 0.8833333333333333,
+    "precision": 0.7571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.845,
+    "guard": false,
+    "hits": 69,
+    "correct_hits": 52,
+    "false_hits": 17,
+    "recall": 0.8666666666666667,
+    "precision": 0.7536231884057971,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I read a CSV file in R?",
+        "served": "How do I read a CSV file with pandas?",
+        "score": 0.8499
+      },
+      {
+        "query": "What is the boiling point of water at 3000 meters altitude?",
+        "served": "What is the boiling point of water at sea level?",
+        "score": 0.8493
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.85,
+    "guard": false,
+    "hits": 66,
+    "correct_hits": 52,
+    "false_hits": 14,
+    "recall": 0.8666666666666667,
+    "precision": 0.7878787878787878,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.855,
+    "guard": false,
+    "hits": 66,
+    "correct_hits": 52,
+    "false_hits": 14,
+    "recall": 0.8666666666666667,
+    "precision": 0.7878787878787878,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I create an index in MongoDB?",
+        "served": "How do I create an index in PostgreSQL?",
+        "score": 0.8595
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.86,
+    "guard": false,
+    "hits": 65,
+    "correct_hits": 52,
+    "false_hits": 13,
+    "recall": 0.8666666666666667,
+    "precision": 0.8,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.865,
+    "guard": false,
+    "hits": 65,
+    "correct_hits": 52,
+    "false_hits": 13,
+    "recall": 0.8666666666666667,
+    "precision": 0.8,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.87,
+    "guard": false,
+    "hits": 63,
+    "correct_hits": 50,
+    "false_hits": 13,
+    "recall": 0.8333333333333334,
+    "precision": 0.7936507936507936,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "What caused World War II?",
+        "served": "What caused World War I?",
+        "score": 0.8747
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How does garbage collection work in Go?",
+        "served": "How does garbage collection work in Java?",
+        "score": 0.8717
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.875,
+    "guard": false,
+    "hits": 61,
+    "correct_hits": 50,
+    "false_hits": 11,
+    "recall": 0.8333333333333334,
+    "precision": 0.819672131147541,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I train a random forest with XGBoost?",
+        "served": "How do I train a random forest with scikit-learn?",
+        "score": 0.8776
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I handle exceptions in Kotlin?",
+        "served": "How do I handle exceptions in Java?",
+        "score": 0.8758
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.88,
+    "guard": false,
+    "hits": 59,
+    "correct_hits": 50,
+    "false_hits": 9,
+    "recall": 0.8333333333333334,
+    "precision": 0.847457627118644,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      },
+      {
+        "query": "How do I build a Podman image from a Containerfile?",
+        "served": "How do I build a Docker image from a Dockerfile?",
+        "score": 0.8832
+      }
+    ]
+  },
+  {
+    "threshold": 0.885,
+    "guard": false,
+    "hits": 57,
+    "correct_hits": 49,
+    "false_hits": 8,
+    "recall": 0.8166666666666667,
+    "precision": 0.8596491228070176,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.89,
+    "guard": false,
+    "hits": 55,
+    "correct_hits": 47,
+    "false_hits": 8,
+    "recall": 0.7833333333333333,
+    "precision": 0.8545454545454545,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.895,
+    "guard": false,
+    "hits": 52,
+    "correct_hits": 44,
+    "false_hits": 8,
+    "recall": 0.7333333333333333,
+    "precision": 0.8461538461538461,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.9,
+    "guard": false,
+    "hits": 51,
+    "correct_hits": 43,
+    "false_hits": 8,
+    "recall": 0.7166666666666667,
+    "precision": 0.8431372549019608,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.905,
+    "guard": false,
+    "hits": 50,
+    "correct_hits": 42,
+    "false_hits": 8,
+    "recall": 0.7,
+    "precision": 0.84,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.91,
+    "guard": false,
+    "hits": 48,
+    "correct_hits": 40,
+    "false_hits": 8,
+    "recall": 0.6666666666666666,
+    "precision": 0.8333333333333334,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "Explain how async/await works in Rust",
+        "served": "Explain how async/await works in JavaScript",
+        "score": 0.9121
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.915,
+    "guard": false,
+    "hits": 45,
+    "correct_hits": 38,
+    "false_hits": 7,
+    "recall": 0.6333333333333333,
+    "precision": 0.8444444444444444,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.92,
+    "guard": false,
+    "hits": 41,
+    "correct_hits": 34,
+    "false_hits": 7,
+    "recall": 0.5666666666666667,
+    "precision": 0.8292682926829268,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I set up HTTPS with Let's Encrypt on Apache?",
+        "served": "How do I set up HTTPS with Let's Encrypt on Nginx?",
+        "score": 0.921
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.925,
+    "guard": false,
+    "hits": 36,
+    "correct_hits": 30,
+    "false_hits": 6,
+    "recall": 0.5,
+    "precision": 0.8333333333333334,
+    "false_examples": [
+      {
+        "query": "How do I schedule a cron job on macOS?",
+        "served": "How do I schedule a cron job on Linux?",
+        "score": 0.9288
+      },
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.93,
+    "guard": false,
+    "hits": 35,
+    "correct_hits": 30,
+    "false_hits": 5,
+    "recall": 0.5,
+    "precision": 0.8571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.935,
+    "guard": false,
+    "hits": 31,
+    "correct_hits": 26,
+    "false_hits": 5,
+    "recall": 0.43333333333333335,
+    "precision": 0.8387096774193549,
+    "false_examples": [
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I profile a slow Ruby script?",
+        "served": "How do I profile a slow Python script?",
+        "score": 0.9387
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.94,
+    "guard": false,
+    "hits": 28,
+    "correct_hits": 24,
+    "false_hits": 4,
+    "recall": 0.4,
+    "precision": 0.8571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      },
+      {
+        "query": "How do I merge two dictionaries in C#?",
+        "served": "How do I merge two dictionaries in Python?",
+        "score": 0.9445
+      }
+    ]
+  },
+  {
+    "threshold": 0.945,
+    "guard": false,
+    "hits": 24,
+    "correct_hits": 21,
+    "false_hits": 3,
+    "recall": 0.35,
+    "precision": 0.875,
+    "false_examples": [
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.95,
+    "guard": false,
+    "hits": 21,
+    "correct_hits": 18,
+    "false_hits": 3,
+    "recall": 0.3,
+    "precision": 0.8571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I remove duplicates from an array in PHP?",
+        "served": "How do I remove duplicates from an array in JavaScript?",
+        "score": 0.9513
+      },
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.955,
+    "guard": false,
+    "hits": 16,
+    "correct_hits": 14,
+    "false_hits": 2,
+    "recall": 0.23333333333333334,
+    "precision": 0.875,
+    "false_examples": [
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.96,
+    "guard": false,
+    "hits": 15,
+    "correct_hits": 13,
+    "false_hits": 2,
+    "recall": 0.21666666666666667,
+    "precision": 0.8666666666666667,
+    "false_examples": [
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.965,
+    "guard": false,
+    "hits": 14,
+    "correct_hits": 12,
+    "false_hits": 2,
+    "recall": 0.2,
+    "precision": 0.8571428571428571,
+    "false_examples": [
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.97,
+    "guard": false,
+    "hits": 12,
+    "correct_hits": 10,
+    "false_hits": 2,
+    "recall": 0.16666666666666666,
+    "precision": 0.8333333333333334,
+    "false_examples": [
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.975,
+    "guard": false,
+    "hits": 10,
+    "correct_hits": 8,
+    "false_hits": 2,
+    "recall": 0.13333333333333333,
+    "precision": 0.8,
+    "false_examples": [
+      {
+        "query": "How do I reverse a singly linked list in Java?",
+        "served": "How do I reverse a singly linked list in Python?",
+        "score": 0.9791
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.98,
+    "guard": false,
+    "hits": 5,
+    "correct_hits": 4,
+    "false_hits": 1,
+    "recall": 0.06666666666666667,
+    "precision": 0.8,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.985,
+    "guard": false,
+    "hits": 3,
+    "correct_hits": 2,
+    "false_hits": 1,
+    "recall": 0.03333333333333333,
+    "precision": 0.6666666666666666,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.99,
+    "guard": false,
+    "hits": 2,
+    "correct_hits": 1,
+    "false_hits": 1,
+    "recall": 0.016666666666666666,
+    "precision": 0.5,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.8,
+    "guard": true,
+    "hits": 59,
+    "correct_hits": 57,
+    "false_hits": 2,
+    "recall": 0.95,
+    "precision": 0.9661016949152542,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.805,
+    "guard": true,
+    "hits": 59,
+    "correct_hits": 57,
+    "false_hits": 2,
+    "recall": 0.95,
+    "precision": 0.9661016949152542,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.81,
+    "guard": true,
+    "hits": 59,
+    "correct_hits": 57,
+    "false_hits": 2,
+    "recall": 0.95,
+    "precision": 0.9661016949152542,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.815,
+    "guard": true,
+    "hits": 58,
+    "correct_hits": 56,
+    "false_hits": 2,
+    "recall": 0.9333333333333333,
+    "precision": 0.9655172413793104,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.82,
+    "guard": true,
+    "hits": 56,
+    "correct_hits": 54,
+    "false_hits": 2,
+    "recall": 0.9,
+    "precision": 0.9642857142857143,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.825,
+    "guard": true,
+    "hits": 56,
+    "correct_hits": 54,
+    "false_hits": 2,
+    "recall": 0.9,
+    "precision": 0.9642857142857143,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.83,
+    "guard": true,
+    "hits": 55,
+    "correct_hits": 53,
+    "false_hits": 2,
+    "recall": 0.8833333333333333,
+    "precision": 0.9636363636363636,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.835,
+    "guard": true,
+    "hits": 55,
+    "correct_hits": 53,
+    "false_hits": 2,
+    "recall": 0.8833333333333333,
+    "precision": 0.9636363636363636,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.84,
+    "guard": true,
+    "hits": 55,
+    "correct_hits": 53,
+    "false_hits": 2,
+    "recall": 0.8833333333333333,
+    "precision": 0.9636363636363636,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.845,
+    "guard": true,
+    "hits": 54,
+    "correct_hits": 52,
+    "false_hits": 2,
+    "recall": 0.8666666666666667,
+    "precision": 0.9629629629629629,
+    "false_examples": [
+      {
+        "query": "What is the derivative of cos(x)?",
+        "served": "What is the derivative of sin(x)?",
+        "score": 0.8477
+      },
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.85,
+    "guard": true,
+    "hits": 53,
+    "correct_hits": 52,
+    "false_hits": 1,
+    "recall": 0.8666666666666667,
+    "precision": 0.9811320754716981,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.855,
+    "guard": true,
+    "hits": 53,
+    "correct_hits": 52,
+    "false_hits": 1,
+    "recall": 0.8666666666666667,
+    "precision": 0.9811320754716981,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.86,
+    "guard": true,
+    "hits": 53,
+    "correct_hits": 52,
+    "false_hits": 1,
+    "recall": 0.8666666666666667,
+    "precision": 0.9811320754716981,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.865,
+    "guard": true,
+    "hits": 53,
+    "correct_hits": 52,
+    "false_hits": 1,
+    "recall": 0.8666666666666667,
+    "precision": 0.9811320754716981,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.87,
+    "guard": true,
+    "hits": 51,
+    "correct_hits": 50,
+    "false_hits": 1,
+    "recall": 0.8333333333333334,
+    "precision": 0.9803921568627451,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.875,
+    "guard": true,
+    "hits": 51,
+    "correct_hits": 50,
+    "false_hits": 1,
+    "recall": 0.8333333333333334,
+    "precision": 0.9803921568627451,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.88,
+    "guard": true,
+    "hits": 51,
+    "correct_hits": 50,
+    "false_hits": 1,
+    "recall": 0.8333333333333334,
+    "precision": 0.9803921568627451,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.885,
+    "guard": true,
+    "hits": 50,
+    "correct_hits": 49,
+    "false_hits": 1,
+    "recall": 0.8166666666666667,
+    "precision": 0.98,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.89,
+    "guard": true,
+    "hits": 48,
+    "correct_hits": 47,
+    "false_hits": 1,
+    "recall": 0.7833333333333333,
+    "precision": 0.9791666666666666,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.895,
+    "guard": true,
+    "hits": 45,
+    "correct_hits": 44,
+    "false_hits": 1,
+    "recall": 0.7333333333333333,
+    "precision": 0.9777777777777777,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.9,
+    "guard": true,
+    "hits": 44,
+    "correct_hits": 43,
+    "false_hits": 1,
+    "recall": 0.7166666666666667,
+    "precision": 0.9772727272727273,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.905,
+    "guard": true,
+    "hits": 43,
+    "correct_hits": 42,
+    "false_hits": 1,
+    "recall": 0.7,
+    "precision": 0.9767441860465116,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.91,
+    "guard": true,
+    "hits": 41,
+    "correct_hits": 40,
+    "false_hits": 1,
+    "recall": 0.6666666666666666,
+    "precision": 0.975609756097561,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.915,
+    "guard": true,
+    "hits": 39,
+    "correct_hits": 38,
+    "false_hits": 1,
+    "recall": 0.6333333333333333,
+    "precision": 0.9743589743589743,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.92,
+    "guard": true,
+    "hits": 35,
+    "correct_hits": 34,
+    "false_hits": 1,
+    "recall": 0.5666666666666667,
+    "precision": 0.9714285714285714,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.925,
+    "guard": true,
+    "hits": 31,
+    "correct_hits": 30,
+    "false_hits": 1,
+    "recall": 0.5,
+    "precision": 0.967741935483871,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.93,
+    "guard": true,
+    "hits": 31,
+    "correct_hits": 30,
+    "false_hits": 1,
+    "recall": 0.5,
+    "precision": 0.967741935483871,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.935,
+    "guard": true,
+    "hits": 27,
+    "correct_hits": 26,
+    "false_hits": 1,
+    "recall": 0.43333333333333335,
+    "precision": 0.9629629629629629,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.94,
+    "guard": true,
+    "hits": 25,
+    "correct_hits": 24,
+    "false_hits": 1,
+    "recall": 0.4,
+    "precision": 0.96,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.945,
+    "guard": true,
+    "hits": 22,
+    "correct_hits": 21,
+    "false_hits": 1,
+    "recall": 0.35,
+    "precision": 0.9545454545454546,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.95,
+    "guard": true,
+    "hits": 19,
+    "correct_hits": 18,
+    "false_hits": 1,
+    "recall": 0.3,
+    "precision": 0.9473684210526315,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.955,
+    "guard": true,
+    "hits": 15,
+    "correct_hits": 14,
+    "false_hits": 1,
+    "recall": 0.23333333333333334,
+    "precision": 0.9333333333333333,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.96,
+    "guard": true,
+    "hits": 14,
+    "correct_hits": 13,
+    "false_hits": 1,
+    "recall": 0.21666666666666667,
+    "precision": 0.9285714285714286,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.965,
+    "guard": true,
+    "hits": 13,
+    "correct_hits": 12,
+    "false_hits": 1,
+    "recall": 0.2,
+    "precision": 0.9230769230769231,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.97,
+    "guard": true,
+    "hits": 11,
+    "correct_hits": 10,
+    "false_hits": 1,
+    "recall": 0.16666666666666666,
+    "precision": 0.9090909090909091,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.975,
+    "guard": true,
+    "hits": 9,
+    "correct_hits": 8,
+    "false_hits": 1,
+    "recall": 0.13333333333333333,
+    "precision": 0.8888888888888888,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.98,
+    "guard": true,
+    "hits": 5,
+    "correct_hits": 4,
+    "false_hits": 1,
+    "recall": 0.06666666666666667,
+    "precision": 0.8,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.985,
+    "guard": true,
+    "hits": 3,
+    "correct_hits": 2,
+    "false_hits": 1,
+    "recall": 0.03333333333333333,
+    "precision": 0.6666666666666666,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  },
+  {
+    "threshold": 0.99,
+    "guard": true,
+    "hits": 2,
+    "correct_hits": 1,
+    "false_hits": 1,
+    "recall": 0.016666666666666666,
+    "precision": 0.5,
+    "false_examples": [
+      {
+        "query": "How do I convert Fahrenheit to Celsius?",
+        "served": "How do I convert Celsius to Fahrenheit?",
+        "score": 0.9967
+      }
+    ]
+  }
+]

@@ -42,9 +42,10 @@ def extract_entities(text: str) -> FrozenSet[str]:
     for sentence in _SENTENCE_BREAK_RE.split(text):
         for i, raw in enumerate(_TOKEN_RE.findall(sentence)):
             token = raw.lower()
-            if token[0].isdigit():
+            if token[0].isdigit() or token in TECH_TERMS:
                 entities.add(token)
-            elif token in TECH_TERMS:
+            elif len(raw) > 1 and (raw.isupper() or any(ch.isupper() for ch in raw[1:])):
+                # Acronyms (REST, CDN) and CamelCase names (GraphQL) at any position.
                 entities.add(token)
             elif i > 0 and raw[0].isupper() and token not in _CAPITAL_STOPWORDS:
                 # Proper noun / acronym in the middle of a sentence (France, TCP, AWS).

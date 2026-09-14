@@ -4,3 +4,4 @@ __pycache__/
 .env
 qdrant_storage/
 benchmark/qdrant_bench/
+qdrant_server_data/
