@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+qdrant-client[fastembed]>=1.13
+python-dotenv
+# benchmark + tests
+numpy
+matplotlib
+pytest
