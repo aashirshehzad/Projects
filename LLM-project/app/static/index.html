@@ -150,7 +150,7 @@
       </div>
       <div class="field narrow">
         <label>Model</label>
-        <input type="text" id="model" placeholder="llama-3.1-8b-instant" />
+        <input type="text" id="model" placeholder="gemini-3.5-flash-lite" />
       </div>
       <label class="check"><input type="checkbox" id="bypass" /> Bypass cache (direct baseline)</label>
     </div>
@@ -283,8 +283,9 @@ async function send() {
     const headers = { 'Content-Type': 'application/json' };
     if (tenant) headers['X-Tenant-ID'] = tenant;
     if (bypass) headers['X-Cache-Bypass'] = 'true';
-    const body = { messages: [{ role: 'user', content: query }] };
-    if (model) body.model = model;
+    // Always send an explicit model rather than relying on the server's default,
+    // so the placeholder shown in the field is actually what gets used.
+    const body = { messages: [{ role: 'user', content: query }], model: model || $('model').placeholder };
 
     const res = await fetch('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(body) });
     const data = await res.json();

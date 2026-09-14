@@ -37,7 +37,7 @@ class Settings:
     max_entries: int = int(os.getenv("CACHE_MAX_ENTRIES", "1000000" if os.getenv("QDRANT_URL") else "2000"))
     eviction_interval_seconds: int = int(os.getenv("EVICTION_INTERVAL_SECONDS", "300"))
 
-    # Upstream: "mock", "groq", "openai", "ollama" or any OpenAI-compatible URL via UPSTREAM_URL
+    # Upstream: "mock", "groq", "openai", "gemini", "ollama" or any OpenAI-compatible URL via UPSTREAM_URL
     upstream_provider: str = os.getenv("UPSTREAM_PROVIDER", "mock")
     upstream_url: str = os.getenv("UPSTREAM_URL", "")
     upstream_api_key: str = os.getenv("UPSTREAM_API_KEY", "")
@@ -49,6 +49,8 @@ class Settings:
 PROVIDER_URLS = {
     "groq": "https://api.groq.com/openai/v1/chat/completions",
     "openai": "https://api.openai.com/v1/chat/completions",
+    # Google's OpenAI-compatibility layer: https://ai.google.dev/gemini-api/docs/openai
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     "ollama": "http://localhost:11434/v1/chat/completions",
 }
 
