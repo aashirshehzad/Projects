@@ -4,10 +4,14 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 from .cache import Partition, SemanticCache
 from .config import Settings, settings
@@ -53,6 +57,10 @@ def create_app(cfg: Settings = settings, cache: Optional[SemanticCache] = None,
                 app.state.cache.close()
 
     app = FastAPI(title="Semantic Caching Proxy", lifespan=lifespan)
+
+    @app.get("/")
+    async def index():
+        return FileResponse(STATIC_DIR / "index.html")
 
     @app.post("/v1/chat/completions", response_model=ProxyResponse)
     async def handle_completion(

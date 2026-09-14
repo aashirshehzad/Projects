@@ -142,6 +142,17 @@ def test_bypass_skips_cache_entirely():
     assert stats["entries"] == 0 and stats["hits"] + stats["misses"] == 0
 
 
+def test_clear_removes_entries_and_stops_serving_hits():
+    client, cache = make_client()
+    with client:
+        ask(client, "What is a monad?")
+        assert cache.count() == 1
+        res = client.delete("/cache")
+        assert res.json() == {"cleared": True}
+        assert cache.count() == 0
+        assert ask(client, "What is a monad?").json()["source"] == "UPSTREAM_LLM"
+
+
 def test_rejects_request_without_user_message():
     client, _ = make_client()
     with client:

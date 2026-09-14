@@ -222,7 +222,14 @@ class SemanticCache:
         return {"expired": expired, "over_capacity": trimmed}
 
     def clear(self) -> None:
+        # Not delete_collection + recreate: embedded Qdrant on Windows can't unlink the
+        # collection's sqlite file while this same process still has it open, and
+        # shutil.rmtree(..., ignore_errors=True) swallows that failure silently, leaving
+        # the "cleared" collection populated with all its old points. Deleting every
+        # point via a match-all filter avoids touching the file at all.
         with self._lock:
-            self.client.delete_collection(self.cfg.collection_name)
-        self._ensure_collection()
+            self.client.delete(
+                collection_name=self.cfg.collection_name,
+                points_selector=qm.FilterSelector(filter=qm.Filter()),
+            )
         self.stats = CacheStats()

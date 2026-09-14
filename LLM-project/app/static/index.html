@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Semantic Cache Tester</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface: #fcfcfb; --surface-2: #f2f1ee; --border: #e6e5e0;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --blue: #2a78d6; --blue-dim: #eaf1fc;
+    --green: #0ca30c; --green-dim: #e6f7e6;
+    --orange: #eb6834; --orange-dim: #fdeee6;
+    --red: #d03b3b; --red-dim: #fbe9e9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: #1a1a19; --surface-2: #242422; --border: #34332f;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --blue: #3987e5; --blue-dim: #16273e;
+      --green: #1fbf1f; --green-dim: #123312;
+      --orange: #f0824f; --orange-dim: #3a2416;
+      --red: #e66767; --red-dim: #3a1c1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface: #1a1a19; --surface-2: #242422; --border: #34332f;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --blue: #3987e5; --blue-dim: #16273e;
+    --green: #1fbf1f; --green-dim: #123312;
+    --orange: #f0824f; --orange-dim: #3a2416;
+    --red: #e66767; --red-dim: #3a1c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--surface); color: var(--ink);
+    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 0;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 700; }
+  .sub { color: var(--ink-2); font-size: 12.5px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat .v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 2px; }
+
+  .panel { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+
+  textarea, input[type=text] {
+    width: 100%; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font: inherit; resize: vertical;
+  }
+  textarea:focus, input:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  textarea { min-height: 64px; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row + .row { margin-top: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+  .field label { font-size: 11px; color: var(--muted); }
+  .field.narrow { flex: 0 1 160px; min-width: 120px; }
+
+  label.check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  button {
+    font: inherit; border-radius: 8px; padding: 9px 16px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.ghost:hover { background: var(--surface-2); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.danger:hover { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink-2); cursor: pointer;
+  }
+  .chip:hover { border-color: var(--blue); color: var(--blue); }
+
+  .log { display: flex; flex-direction: column; gap: 10px; }
+  .entry { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
+  .entry-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; letter-spacing: .02em; }
+  .badge.hit { background: var(--green-dim); color: var(--green); }
+  .badge.miss { background: var(--orange-dim); color: var(--orange); }
+  .badge.bypass { background: var(--surface-2); color: var(--muted); }
+  .badge.blocked { background: var(--red-dim); color: var(--red); }
+  .badge.err { background: var(--red-dim); color: var(--red); }
+  .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .q { font-weight: 600; margin-bottom: 4px; }
+  .matched { font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+  .matched b { color: var(--ink); font-weight: 600; }
+  .resp {
+    font-size: 13px; color: var(--ink-2); white-space: pre-wrap;
+    max-height: 4.5em; overflow: hidden; position: relative; cursor: pointer;
+  }
+  .resp.expanded { max-height: none; }
+  .resp:not(.expanded)::after {
+    content: "show more"; position: absolute; right: 0; bottom: 0;
+    background: linear-gradient(to right, transparent, var(--surface) 40%);
+    padding-left: 30px; color: var(--blue); font-size: 12px; font-weight: 600;
+  }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+
+  .guard-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--surface); padding: 10px 18px;
+    border-radius: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Semantic Cache Tester</h1>
+      <div class="sub">Talks to this server's own <code>/v1/chat/completions</code>. Upstream: <span id="upstream">…</span></div>
+    </div>
+    <div class="row">
+      <button class="ghost" id="refreshStats">Refresh stats</button>
+      <button class="ghost" id="evictBtn">Run eviction</button>
+      <button class="danger" id="clearBtn">Clear cache</button>
+      <button class="danger" id="clearConfirmBtn" style="display:none">Really clear? click again</button>
+    </div>
+  </header>
+
+  <div class="stats-row" id="statsRow"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="panel">
+    <h2>Send a query</h2>
+    <textarea id="query" placeholder="Ask something… e.g. How do I reverse a singly linked list in Python?"></textarea>
+
+    <div class="row">
+      <div class="field narrow">
+        <label>Tenant (X-Tenant-ID)</label>
+        <input type="text" id="tenant" placeholder="default" />
+      </div>
+      <div class="field narrow">
+        <label>Model</label>
+        <input type="text" id="model" placeholder="llama-3.1-8b-instant" />
+      </div>
+      <label class="check"><input type="checkbox" id="bypass" /> Bypass cache (direct baseline)</label>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="sendBtn">Send</button>
+      <button class="ghost" id="clearLogBtn">Clear log</button>
+    </div>
+
+    <div class="presets" id="presets"></div>
+    <div class="guard-note">Pairs marked <b>guard</b> score high on cosine similarity alone but differ in a key entity (language, number, name) — the entity guard should block them from hitting.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Request log</h2>
+    <div class="log" id="log"><div class="empty">No requests yet — send one above.</div></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+const statsRow = $('statsRow');
+
+const PRESET_PAIRS = [
+  { label: "linked list (miss)", text: "How do I reverse a singly linked list in Python?" },
+  { label: "→ paraphrase", text: "Write Python code to reverse a singly linked list" },
+  { label: "→ guard: Java", text: "How do I reverse a singly linked list in Java?" },
+  { label: "TCP/UDP (hit pair)", text: "Explain the difference between TCP and UDP" },
+  { label: "→ paraphrase", text: "What are the differences between UDP and TCP?" },
+  { label: "seasons (borderline)", text: "Why does Earth have seasons?" },
+  { label: "→ paraphrase 0.92", text: "What causes the seasons on Earth?" },
+];
+PRESET_PAIRS.forEach(p => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.textContent = p.label;
+  b.onclick = () => { $('query').value = p.text; $('query').focus(); };
+  $('presets').appendChild(b);
+});
+
+function fmtMs(ms) {
+  return ms < 1000 ? `${ms.toFixed(1)} ms` : `${(ms/1000).toFixed(2)} s`;
+}
+
+async function refreshStats() {
+  try {
+    const [statsRes, healthRes] = await Promise.all([
+      fetch('/cache/stats'), fetch('/health')
+    ]);
+    const s = await statsRes.json();
+    const h = await healthRes.json();
+    $('upstream').textContent = h.upstream;
+    const cfg = s.config;
+    statsRow.innerHTML = '';
+    const items = [
+      ['Entries', s.entries],
+      ['Hits', s.hits],
+      ['Misses', s.misses],
+      ['Hit rate', (s.hit_rate * 100).toFixed(1) + '%'],
+      ['Guard rejections', s.guard_rejections],
+      ['Tokens saved', s.tokens_saved],
+      ['Threshold', cfg.similarity_threshold],
+      ['Entity guard', cfg.entity_guard ? 'on' : 'off'],
+    ];
+    for (const [label, val] of items) {
+      const d = document.createElement('div');
+      d.className = 'stat';
+      d.innerHTML = `<div class="v">${val}</div><div class="l">${label}</div>`;
+      statsRow.appendChild(d);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function addLogEntry(query, data, error) {
+  if (logEl.querySelector('.empty')) logEl.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'entry';
+
+  if (error) {
+    div.innerHTML = `
+      <div class="entry-top"><span class="badge err">ERROR</span></div>
+      <div class="q">${escapeHtml(query)}</div>
+      <div class="resp expanded">${escapeHtml(error)}</div>`;
+    logEl.prepend(div);
+    return;
+  }
+
+  const isBypass = data.__bypass;
+  const isHit = data.source === 'CACHE_HIT';
+  const badgeClass = isBypass ? 'bypass' : (isHit ? 'hit' : 'miss');
+  const badgeText = isBypass ? 'BYPASS' : (isHit ? 'CACHE HIT' : 'MISS → upstream');
+
+  let matchedHtml = '';
+  if (isHit) {
+    matchedHtml = `<div class="matched">matched: <b>${escapeHtml(data.matched_query)}</b> · similarity <b>${data.similarity_score}</b></div>`;
+  } else if (!isBypass && data.similarity_score != null) {
+    matchedHtml = `<div class="matched">closest candidate similarity: <b>${data.similarity_score}</b> (below threshold or blocked by guard)</div>`;
+  }
+
+  div.innerHTML = `
+    <div class="entry-top">
+      <span class="badge ${badgeClass}">${badgeText}</span>
+      <span class="meta">${fmtMs(data.latency_ms)} · ${data.usage.total_tokens} tokens${isHit ? ` · ${data.tokens_saved} saved` : ''}</span>
+    </div>
+    <div class="q">${escapeHtml(query)}</div>
+    ${matchedHtml}
+    <div class="resp">${escapeHtml(data.response)}</div>
+  `;
+  const resp = div.querySelector('.resp');
+  resp.onclick = () => resp.classList.toggle('expanded');
+  logEl.prepend(div);
+}
+
+function escapeHtml(s) {
+  return (s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function send() {
+  const query = $('query').value.trim();
+  if (!query) return;
+  const tenant = $('tenant').value.trim();
+  const model = $('model').value.trim();
+  const bypass = $('bypass').checked;
+
+  $('sendBtn').disabled = true;
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (tenant) headers['X-Tenant-ID'] = tenant;
+    if (bypass) headers['X-Cache-Bypass'] = 'true';
+    const body = { messages: [{ role: 'user', content: query }] };
+    if (model) body.model = model;
+
+    const res = await fetch('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) {
+      addLogEntry(query, null, data.detail || res.statusText);
+    } else {
+      data.__bypass = bypass;
+      addLogEntry(query, data, null);
+    }
+  } catch (e) {
+    addLogEntry(query, null, String(e));
+  } finally {
+    $('sendBtn').disabled = false;
+    refreshStats();
+  }
+}
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+$('sendBtn').onclick = send;
+$('query').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
+});
+$('clearLogBtn').onclick = () => { logEl.innerHTML = '<div class="empty">No requests yet — send one above.</div>'; };
+$('refreshStats').onclick = refreshStats;
+$('evictBtn').onclick = async () => {
+  const r = await (await fetch('/cache/evict', { method: 'POST' })).json();
+  showToast(`Evicted: ${r.expired} expired, ${r.over_capacity} over capacity`);
+  refreshStats();
+};
+
+let clearArmed = false;
+let clearArmedTimer = null;
+$('clearBtn').onclick = () => {
+  clearArmed = true;
+  $('clearBtn').style.display = 'none';
+  $('clearConfirmBtn').style.display = '';
+  clearTimeout(clearArmedTimer);
+  clearArmedTimer = setTimeout(() => {
+    clearArmed = false;
+    $('clearBtn').style.display = '';
+    $('clearConfirmBtn').style.display = 'none';
+  }, 4000);
+};
+$('clearConfirmBtn').onclick = async () => {
+  if (!clearArmed) return;
+  clearTimeout(clearArmedTimer);
+  $('clearBtn').style.display = '';
+  $('clearConfirmBtn').style.display = 'none';
+  clearArmed = false;
+  await fetch('/cache', { method: 'DELETE' });
+  showToast('Cache cleared');
+  refreshStats();
+};
+
+refreshStats();
+</script>
+</body>
+</html>
