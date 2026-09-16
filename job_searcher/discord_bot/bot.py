@@ -223,7 +223,8 @@ async def on_message(message: discord.Message):
     profile_text = session.get("profile_text") if session else None
     if not profile_text:
         await message.channel.send(
-            "Send me your resume first - upload a PDF, or paste the text directly."
+            "Send me your resume first - upload it as a PDF attachment. "
+            "You can re-upload any time to update it."
         )
         return
 
