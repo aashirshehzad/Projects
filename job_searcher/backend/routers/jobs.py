@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from backend import db
+from backend.job_fetcher import fetch_job_text, looks_like_url
 from src.drafter import draft_email
 from src.matcher import MatchResult, evaluate_match
 from src.parser import ParsedJob, parse_job_description
@@ -32,11 +33,20 @@ async def analyze(body: AnalyzeRequest, request: Request):
     session = db.get_session(session_id)
     profile_text = _require_profile(session)
 
-    if not body.job_text.strip():
+    raw_input = body.job_text.strip()
+    if not raw_input:
         raise HTTPException(400, "job_text is required.")
 
+    if looks_like_url(raw_input):
+        try:
+            job_text = fetch_job_text(raw_input)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+    else:
+        job_text = raw_input
+
     try:
-        job: ParsedJob = parse_job_description(body.job_text)
+        job: ParsedJob = parse_job_description(job_text)
         match: MatchResult = evaluate_match(job, profile_text)
     except Exception as e:
         raise HTTPException(502, f"Failed to analyze job: {e}") from e

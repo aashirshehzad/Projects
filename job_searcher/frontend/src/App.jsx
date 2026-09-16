@@ -163,13 +163,17 @@ export default function App() {
 
       {step === 1 && (
         <section className="card">
-          <h2>2. Paste the job description</h2>
+          <h2>2. Paste the job description or a link to it</h2>
           <textarea
             rows={12}
-            placeholder="Paste the LinkedIn job description here..."
+            placeholder="Paste the job description text, or a link to the LinkedIn posting (e.g. https://lnkd.in/...)..."
             value={jobText}
             onChange={(e) => setJobText(e.target.value)}
           />
+          <p className="hint">
+            Pasting a link works for most public job postings. If the page requires sign-in (common for
+            some LinkedIn listings), paste the description text instead.
+          </p>
           <div className="row">
             <button onClick={() => setStep(0)}>← Back</button>
             <button className="primary" onClick={handleAnalyze} disabled={loading || !jobText.trim()}>
