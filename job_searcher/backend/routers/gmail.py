@@ -1,6 +1,8 @@
 """Per-session Gmail OAuth connect flow and draft creation."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -8,6 +10,7 @@ from backend import db, gmail_oauth
 from src.config import FRONTEND_URL
 from src.drafter import EmailDraft
 
+log = logging.getLogger("jobagent.gmail")
 router = APIRouter(prefix="/api/gmail", tags=["gmail"])
 
 
@@ -56,6 +59,7 @@ async def callback(request: Request, code: str | None = None, state: str | None 
     try:
         token_data = gmail_oauth.exchange_code_for_token(code)
     except Exception:
+        log.exception("Gmail token exchange failed (state=%s)", state)
         if is_external:
             return HTMLResponse(_result_page(False, "token_exchange_failed"))
         return RedirectResponse(f"{FRONTEND_URL}/?gmail_error=token_exchange_failed")

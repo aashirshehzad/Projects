@@ -42,7 +42,18 @@ def _client_config() -> dict[str, Any]:
 
 
 def _build_flow() -> Flow:
-    return Flow.from_client_config(_client_config(), scopes=GMAIL_SCOPES, redirect_uri=GOOGLE_REDIRECT_URI)
+    # PKCE is off on purpose: authorize (get_authorization_url) and exchange
+    # (exchange_code_for_token) each build a fresh Flow instance - possibly in
+    # a different process entirely for the Discord bot - so there's no shared
+    # code_verifier to reuse. Fine here: this is a confidential server-side
+    # client already authenticated via client_secret, which is what PKCE
+    # exists to substitute for in public clients that can't hold a secret.
+    return Flow.from_client_config(
+        _client_config(),
+        scopes=GMAIL_SCOPES,
+        redirect_uri=GOOGLE_REDIRECT_URI,
+        autogenerate_code_verifier=False,
+    )
 
 
 def get_authorization_url(state: str) -> str:
