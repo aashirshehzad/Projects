@@ -9,7 +9,7 @@ ML Engineer & Generative AI Developer | Python, LangChain/LangGraph, LLM Integra
 ## Contact
 - Email: aashirshehzad111@gmail.com
 - Phone: +92333-5012729
-- LinkedIn: (see profile)
+- LinkedIn: https://www.linkedin.com/in/muhammad-aashir-shehzad/
 - Location: Pakistan (open to remote)
 
 ## Summary
