@@ -47,3 +47,17 @@ def require_gemini_key() -> str:
             "GEMINI_API_KEY is not set. Copy .env.example to .env and fill it in."
         )
     return GEMINI_API_KEY
+
+
+# --- Discord bot (discord_bot/) settings ---
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
+# Only this Discord user's DMs are processed; everyone else is ignored.
+DISCORD_ALLOWED_USER_ID = os.getenv("DISCORD_ALLOWED_USER_ID", "")
+
+
+def require_discord_token() -> str:
+    if not DISCORD_BOT_TOKEN:
+        raise RuntimeError(
+            "DISCORD_BOT_TOKEN is not set. Copy .env.example to .env and fill it in."
+        )
+    return DISCORD_BOT_TOKEN
