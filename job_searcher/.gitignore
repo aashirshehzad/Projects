@@ -2,6 +2,7 @@
 credentials/*.json
 !credentials/.gitkeep
 data/jobs_history.json
+data/resume.pdf
 backend/data/*.db
 frontend/node_modules/
 frontend/dist/

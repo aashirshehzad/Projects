@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import base64
+import mimetypes
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from google.auth.transport.requests import Request
@@ -10,7 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from src.config import GMAIL_CREDENTIALS_PATH, GMAIL_SCOPES, GMAIL_TOKEN_PATH
+from src.config import GMAIL_CREDENTIALS_PATH, GMAIL_SCOPES, GMAIL_TOKEN_PATH, RESUME_FILE_PATH
 from src.drafter import EmailDraft
 
 
@@ -55,7 +58,21 @@ def create_draft(email: EmailDraft) -> str:
     creds = _load_credentials()
     service = build("gmail", "v1", credentials=creds)
 
-    message = MIMEText(email.body)
+    if RESUME_FILE_PATH.exists():
+        message = MIMEMultipart()
+        message.attach(MIMEText(email.body))
+
+        content_type, _ = mimetypes.guess_type(str(RESUME_FILE_PATH))
+        maintype, subtype = (content_type or "application/octet-stream").split("/", 1)
+        with open(RESUME_FILE_PATH, "rb") as f:
+            attachment = MIMEApplication(f.read(), _subtype=subtype)
+        attachment.add_header(
+            "Content-Disposition", "attachment", filename=RESUME_FILE_PATH.name
+        )
+        message.attach(attachment)
+    else:
+        message = MIMEText(email.body)
+
     message["to"] = email.recipient_email
     message["subject"] = email.subject_line
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")

@@ -16,6 +16,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 MATCH_SCORE_THRESHOLD = int(os.getenv("MATCH_SCORE_THRESHOLD", "65"))
 
 PROFILE_PATH = BASE_DIR / os.getenv("PROFILE_PATH", "data/profile.md")
+RESUME_FILE_PATH = BASE_DIR / os.getenv("RESUME_FILE_PATH", "data/resume.pdf")
 JOBS_HISTORY_PATH = BASE_DIR / os.getenv("JOBS_HISTORY_PATH", "data/jobs_history.json")
 GMAIL_CREDENTIALS_PATH = BASE_DIR / os.getenv("GMAIL_CREDENTIALS_PATH", "credentials/credentials.json")
 GMAIL_TOKEN_PATH = BASE_DIR / os.getenv("GMAIL_TOKEN_PATH", "credentials/token.json")
