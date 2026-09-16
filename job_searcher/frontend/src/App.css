@@ -1,0 +1,168 @@
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  text-align: left;
+}
+
+header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: #888;
+  margin-top: 0;
+}
+
+.steps {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.step {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #444;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.step.active {
+  border-color: #646cff;
+  color: #fff;
+  font-weight: 600;
+}
+
+.step.done {
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #111;
+  color: #eee;
+  resize: vertical;
+  margin: 0.5rem 0;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.or {
+  color: #888;
+  margin: 1rem 0 0.25rem;
+}
+
+button, .button-link {
+  border-radius: 8px;
+  border: 1px solid #444;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.95rem;
+  background: #222;
+  color: #eee;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button.primary, .button-link.primary {
+  background: #646cff;
+  border-color: #646cff;
+  color: #fff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-banner {
+  background: #3a1414;
+  border: 1px solid #7a2222;
+  color: #ff9c9c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.warn-banner {
+  background: #3a2f14;
+  border: 1px solid #7a5f22;
+  color: #ffd98c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.ok-banner {
+  background: #143a1e;
+  border: 1px solid #227a3f;
+  color: #8cffab;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.score {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.score.aligned {
+  color: #4caf50;
+}
+
+.score.mismatch {
+  color: #ff9800;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.two-col h4 {
+  margin-bottom: 0.25rem;
+}
+
+footer {
+  text-align: center;
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 2rem;
+}
+
+@media (max-width: 600px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}

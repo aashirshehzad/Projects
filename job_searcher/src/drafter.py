@@ -4,7 +4,7 @@ from __future__ import annotations
 from anthropic import Anthropic
 from pydantic import BaseModel, Field
 
-from src.config import ANTHROPIC_MODEL, CANDIDATE_NAME, require_anthropic_key
+from src.config import ANTHROPIC_MODEL, require_anthropic_key
 from src.matcher import MatchResult
 from src.parser import ParsedJob
 
@@ -49,11 +49,12 @@ def draft_email(job: ParsedJob, match: MatchResult, profile_markdown: str) -> Em
             {
                 "role": "user",
                 "content": (
-                    f"Write a cold outreach email from {CANDIDATE_NAME} applying for the "
-                    f"'{job.job_title}' role at {job.company_name}"
+                    "Write a cold outreach email from the candidate described in the profile below, "
+                    f"applying for the '{job.job_title}' role at {job.company_name}"
                     + (f", addressed to {job.recruiter_name}" if job.recruiter_name else "")
                     + ".\n\n"
                     "Requirements:\n"
+                    "- Sign the email with the candidate's actual name, as found in the profile.\n"
                     "- Under 180 words total in the body.\n"
                     "- Engaging, concise, confident tone; no generic filler.\n"
                     "- Pull 2-3 of the most relevant project or experience highlights from the "

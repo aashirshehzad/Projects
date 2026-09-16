@@ -1,0 +1,17 @@
+:root {
+  font: 16px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+  color: #eee;
+  background: #111;
+}
+
+body {
+  margin: 0;
+  background: #111;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  color: #fff;
+}
