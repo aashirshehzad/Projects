@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, gmailComposeUrl, mailtoUrl } from "./api";
 import "./App.css";
+
+const PLACEHOLDER_EMAIL = "recruiter-email-not-found@example.com";
 
 const STEPS = ["Profile", "Job", "Match", "Draft"];
 
@@ -18,24 +20,10 @@ export default function App() {
   const [duplicate, setDuplicate] = useState(null);
 
   const [draft, setDraft] = useState(null);
-
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [savedDraftId, setSavedDraftId] = useState(null);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
     api.getProfile().then((r) => setHasProfile(r.has_profile)).catch(() => {});
-    api.gmailStatus().then((r) => setGmailConnected(r.connected)).catch(() => {});
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("gmail") === "connected") {
-      setGmailConnected(true);
-    }
-    if (params.get("gmail_error")) {
-      setError(`Gmail connection failed: ${params.get("gmail_error")}`);
-    }
-    if (params.get("gmail") || params.get("gmail_error")) {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
   }, []);
 
   async function handleFileUpload(e) {
@@ -77,7 +65,7 @@ export default function App() {
       setMatch(res.match);
       setDuplicate(res.duplicate);
       setDraft(null);
-      setSavedDraftId(null);
+      setOpened(false);
       setStep(2);
     } catch (err) {
       setError(err.message);
@@ -121,17 +109,14 @@ export default function App() {
     }
   }
 
-  async function handleSaveToGmail() {
-    setError("");
-    setLoading(true);
-    try {
-      const res = await api.gmailSaveDraft();
-      setSavedDraftId(res.draft_id);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  function handleOpenCompose(kind) {
+    const url =
+      kind === "gmail"
+        ? gmailComposeUrl({ to: draft.recipient_email, subject: draft.subject_line, body: draft.body })
+        : mailtoUrl({ to: draft.recipient_email, subject: draft.subject_line, body: draft.body });
+    window.open(url, "_blank", "noopener,noreferrer");
+    setOpened(true);
+    api.markOpened().catch(() => {});
   }
 
   return (
@@ -272,28 +257,31 @@ export default function App() {
           </p>
           <textarea rows={12} value={draft.body} readOnly />
 
-          {savedDraftId ? (
-            <p className="ok-banner">Saved to your Gmail drafts (id: {savedDraftId}).</p>
-          ) : gmailConnected ? (
-            <div className="row">
-              <button onClick={() => setStep(2)}>← Back</button>
-              <button className="primary" onClick={handleSaveToGmail} disabled={loading}>
-                {loading ? "Saving..." : "Save as Gmail draft"}
-              </button>
-            </div>
-          ) : (
-            <div className="row">
-              <button onClick={() => setStep(2)}>← Back</button>
-              <a className="primary button-link" href={api.gmailAuthorizeUrl()}>
-                Connect Gmail to save draft
-              </a>
-            </div>
+          {draft.recipient_email === PLACEHOLDER_EMAIL && (
+            <p className="warn-banner">
+              No recruiter email was found in the job posting — fill in the real "To" address yourself
+              before sending.
+            </p>
           )}
+
+          {opened && <p className="ok-banner">Opened in your email client. Review and hit send there.</p>}
+
+          <div className="row">
+            <button onClick={() => setStep(2)}>← Back</button>
+            <button className="primary" onClick={() => handleOpenCompose("gmail")}>
+              Open in Gmail
+            </button>
+            <button onClick={() => handleOpenCompose("mailto")}>Open in email client</button>
+          </div>
+          <p className="hint">
+            This opens a pre-filled compose window in your own email account — nothing is sent
+            automatically. Review it, then hit send yourself.
+          </p>
         </section>
       )}
 
       <footer>
-        <p>Your resume and Gmail connection are only stored for this browser session.</p>
+        <p>Your resume is only stored for this browser session. Emails are never sent automatically.</p>
       </footer>
     </div>
   );

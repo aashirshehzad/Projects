@@ -105,6 +105,29 @@ async def draft(body: DraftRequest, request: Request):
     return {"draft": email.model_dump()}
 
 
+@router.post("/mark-opened")
+async def mark_opened(request: Request):
+    """Log that the user opened the generated draft in their own email client/Gmail compose."""
+    session_id = request.state.session_id
+    session = db.get_session(session_id)
+    if not session or not session.get("current_job") or not session.get("current_match") or not session.get(
+        "current_draft"
+    ):
+        raise HTTPException(400, "No drafted job in this session.")
+
+    job = session["current_job"]
+    match = session["current_match"]
+    db.add_history_entry(
+        session_id=session_id,
+        company=job["company_name"],
+        title=job["job_title"],
+        match_score=match["match_score"],
+        is_aligned=match["is_aligned"],
+        draft_status="opened_in_email_client",
+    )
+    return {"status": "logged"}
+
+
 @router.get("/history")
 async def history(request: Request):
     return {"entries": db.list_history(request.state.session_id)}

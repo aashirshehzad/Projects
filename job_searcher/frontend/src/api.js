@@ -43,10 +43,16 @@ export const api = {
   skipJob: () => request("/api/jobs/skip", { method: "POST" }),
   draftEmail: (force = false) =>
     request("/api/jobs/draft", { method: "POST", body: JSON.stringify({ force }) }),
+  markOpened: () => request("/api/jobs/mark-opened", { method: "POST" }),
   getHistory: () => request("/api/jobs/history"),
-
-  gmailStatus: () => request("/api/gmail/status"),
-  gmailDisconnect: () => request("/api/gmail/disconnect", { method: "POST" }),
-  gmailSaveDraft: () => request("/api/gmail/save-draft", { method: "POST" }),
-  gmailAuthorizeUrl: () => `${API_URL}/api/gmail/authorize`,
 };
+
+export function gmailComposeUrl({ to, subject, body }) {
+  const params = new URLSearchParams({ view: "cm", fs: "1", to, su: subject, body });
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+export function mailtoUrl({ to, subject, body }) {
+  const params = new URLSearchParams({ subject, body });
+  return `mailto:${encodeURIComponent(to)}?${params.toString()}`;
+}
