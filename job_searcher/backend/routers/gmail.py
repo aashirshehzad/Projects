@@ -2,13 +2,32 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from backend import db, gmail_oauth
 from src.config import FRONTEND_URL
 from src.drafter import EmailDraft
 
 router = APIRouter(prefix="/api/gmail", tags=["gmail"])
+
+
+def _result_page(success: bool, detail: str = "") -> str:
+    title = "Gmail connected" if success else "Connection failed"
+    message = (
+        "You're all set - go back to Discord (or wherever you started this from) and send a job."
+        if success
+        else f"Something went wrong{f' ({detail})' if detail else ''}. Go back and try the connect link again."
+    )
+    color = "#4caf50" if success else "#ff6b6b"
+    return f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>{title}</title>
+<style>
+  body {{ font: 16px/1.5 system-ui, sans-serif; background: #111; color: #eee;
+          display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+  .card {{ max-width: 420px; padding: 2rem; text-align: center; }}
+  h1 {{ color: {color}; font-size: 1.4rem; }}
+</style></head>
+<body><div class="card"><h1>{title}</h1><p>{message}</p></div></body></html>"""
 
 
 @router.get("/authorize")
@@ -21,21 +40,31 @@ async def authorize(request: Request):
 
 @router.get("/callback")
 async def callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None):
+    is_external = bool(state and ":" in state)  # e.g. "discord:<user_id>" - not a browser session
+
     if error:
+        if is_external:
+            return HTMLResponse(_result_page(False, error))
         return RedirectResponse(f"{FRONTEND_URL}/?gmail_error={error}")
 
     session_id = state or request.state.session_id
     if not code:
+        if is_external:
+            return HTMLResponse(_result_page(False, "missing_code"))
         return RedirectResponse(f"{FRONTEND_URL}/?gmail_error=missing_code")
 
     try:
         token_data = gmail_oauth.exchange_code_for_token(code)
     except Exception:
+        if is_external:
+            return HTMLResponse(_result_page(False, "token_exchange_failed"))
         return RedirectResponse(f"{FRONTEND_URL}/?gmail_error=token_exchange_failed")
 
     db.ensure_session(session_id)
     db.update_session(session_id, gmail_token=token_data)
 
+    if is_external:
+        return HTMLResponse(_result_page(True))
     return RedirectResponse(f"{FRONTEND_URL}/?gmail=connected")
 
 
