@@ -27,5 +27,22 @@ services:
     mem_limit: 200m
     mem_reservation: 96m
 
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data       # Let's Encrypt cert/account state - persists across restarts
+      - caddy-config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+    mem_limit: 100m
+    mem_reservation: 32m
+
 volumes:
   job-agent-data:
+  caddy-data:
+  caddy-config:
