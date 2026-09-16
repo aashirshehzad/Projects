@@ -1,0 +1,10 @@
+.env
+credentials/*.json
+!credentials/.gitkeep
+data/jobs_history.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
