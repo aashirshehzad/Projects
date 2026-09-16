@@ -7,7 +7,11 @@ stores each visitor's token against their own session row in SQLite.
 from __future__ import annotations
 
 import base64
+import mimetypes
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 from typing import Any
 
 from google.auth.transport.requests import Request
@@ -93,12 +97,25 @@ def refresh_if_needed(token_data: dict[str, Any]) -> tuple[dict[str, Any], bool]
     raise RuntimeError("Gmail authorization expired or invalid. Please reconnect Gmail.")
 
 
-def create_draft(token_data: dict[str, Any], email: EmailDraft) -> str:
+def create_draft(token_data: dict[str, Any], email: EmailDraft, resume_path: str | None = None) -> str:
     """Creates a Gmail draft using this session's stored credentials. Returns the draft ID."""
     creds = _dict_to_credentials(token_data)
     service = build("gmail", "v1", credentials=creds)
 
-    message = MIMEText(email.body)
+    resume_file = Path(resume_path) if resume_path else None
+    if resume_file and resume_file.exists():
+        message = MIMEMultipart()
+        message.attach(MIMEText(email.body))
+
+        content_type, _ = mimetypes.guess_type(str(resume_file))
+        maintype, subtype = (content_type or "application/octet-stream").split("/", 1)
+        with open(resume_file, "rb") as f:
+            attachment = MIMEApplication(f.read(), _subtype=subtype)
+        attachment.add_header("Content-Disposition", "attachment", filename=resume_file.name)
+        message.attach(attachment)
+    else:
+        message = MIMEText(email.body)
+
     message["to"] = email.recipient_email
     message["subject"] = email.subject_line
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")

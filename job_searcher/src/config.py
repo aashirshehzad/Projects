@@ -30,6 +30,7 @@ GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/ap
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 SESSION_COOKIE_NAME = "job_agent_session"
 SESSION_DB_PATH = BASE_DIR / os.getenv("SESSION_DB_PATH", "backend/data/sessions.db")
+RESUMES_DIR = BASE_DIR / os.getenv("RESUMES_DIR", "backend/data/resumes")
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))  # 5 MB
 
 

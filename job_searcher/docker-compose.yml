@@ -7,11 +7,25 @@ services:
     env_file:
       - .env            # GEMINI_API_KEY (required), GOOGLE_CLIENT_ID/SECRET, FRONTEND_URL, etc.
     volumes:
-      - job-agent-data:/app/backend/data   # sessions.db survives container rebuilds
+      - job-agent-data:/app/backend/data   # sessions.db + uploaded resumes survive rebuilds
     restart: unless-stopped
     # 1 GB EC2 t3.micro is shared with stock-analysis-agent - keep this one capped.
     mem_limit: 300m
     mem_reservation: 128m
+
+  bot:
+    build: .
+    image: job-agent:latest
+    command: ["python", "-m", "discord_bot.bot"]
+    env_file:
+      - .env            # + DISCORD_BOT_TOKEN
+    volumes:
+      - job-agent-data:/app/backend/data   # same volume as web - shares sessions.db/resumes
+    restart: unless-stopped
+    healthcheck:
+      disable: true      # this service has no HTTP server; the image's default healthcheck doesn't apply
+    mem_limit: 200m
+    mem_reservation: 96m
 
 volumes:
   job-agent-data:

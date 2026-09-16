@@ -18,6 +18,7 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     profile_text TEXT,
+    resume_file_path TEXT,
     current_job TEXT,
     current_match TEXT,
     current_draft TEXT,
@@ -55,6 +56,11 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(_SCHEMA)
+        # Idempotent migration for DBs created before resume_file_path existed.
+        try:
+            conn.execute("ALTER TABLE sessions ADD COLUMN resume_file_path TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 def _now() -> str:
