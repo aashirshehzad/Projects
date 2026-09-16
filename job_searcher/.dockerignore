@@ -17,6 +17,5 @@ __pycache__
 .venv
 venv
 .pytest_cache
-discord_bot
 main.py
 README.md
