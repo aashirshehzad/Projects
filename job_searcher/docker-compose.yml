@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    image: job-agent:latest
+    ports:
+      - "8010:8000"
+    env_file:
+      - .env            # GEMINI_API_KEY (required), GOOGLE_CLIENT_ID/SECRET, FRONTEND_URL, etc.
+    volumes:
+      - job-agent-data:/app/backend/data   # sessions.db survives container rebuilds
+    restart: unless-stopped
+    # 1 GB EC2 t3.micro is shared with stock-analysis-agent - keep this one capped.
+    mem_limit: 300m
+    mem_reservation: 128m
+
+volumes:
+  job-agent-data:

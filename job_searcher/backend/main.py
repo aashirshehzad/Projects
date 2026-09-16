@@ -7,13 +7,18 @@ session (see backend/db.py) - nothing is shared between visitors.
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend import db
 from backend.routers import gmail, jobs, profile
-from src.config import FRONTEND_URL, SESSION_COOKIE_NAME
+from src.config import BASE_DIR, FRONTEND_URL, SESSION_COOKIE_NAME
+
+FRONTEND_DIST = Path(BASE_DIR) / "frontend" / "dist"
 
 app = FastAPI(title="JobAgent API")
 
@@ -62,3 +67,14 @@ app.include_router(gmail.router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")

@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist is committed on purpose - the deploy target never runs Node/npm.
 dist-ssr
 *.local
 

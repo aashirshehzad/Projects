@@ -5,7 +5,8 @@ data/jobs_history.json
 data/resume.pdf
 backend/data/*.db
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ is committed on purpose - the deploy target (a 1 GB EC2
+# t3.micro) never runs Node/npm, so the built bundle has to ship in git.
 __pycache__/
 *.pyc
 .venv/
