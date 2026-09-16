@@ -1,12 +1,11 @@
 """Extracts role, company, requirements, and recruiter info from a raw job description."""
 from __future__ import annotations
 
-import json
-
-from anthropic import Anthropic
+from google import genai
+from google.genai import types
 from pydantic import BaseModel, Field
 
-from src.config import ANTHROPIC_MODEL, require_anthropic_key
+from src.config import GEMINI_MODEL, require_gemini_key
 
 
 class ParsedJob(BaseModel):
@@ -26,58 +25,25 @@ class ParsedJob(BaseModel):
     )
 
 
-_TOOL_NAME = "record_parsed_job"
-
-_TOOL_SCHEMA = {
-    "name": _TOOL_NAME,
-    "description": "Record the structured fields extracted from a job description.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "job_title": {"type": "string"},
-            "company_name": {"type": "string"},
-            "recruiter_name": {"type": ["string", "null"]},
-            "recruiter_email": {"type": ["string", "null"]},
-            "tech_stack": {"type": "array", "items": {"type": "string"}},
-            "responsibilities": {"type": "array", "items": {"type": "string"}},
-        },
-        "required": [
-            "job_title",
-            "company_name",
-            "recruiter_name",
-            "recruiter_email",
-            "tech_stack",
-            "responsibilities",
-        ],
-    },
-}
-
-
 def parse_job_description(raw_text: str) -> ParsedJob:
     """Extract structured fields from a raw LinkedIn job description."""
-    client = Anthropic(api_key=require_anthropic_key())
+    client = genai.Client(api_key=require_gemini_key())
 
-    response = client.messages.create(
-        model=ANTHROPIC_MODEL,
-        max_tokens=1500,
-        tools=[_TOOL_SCHEMA],
-        tool_choice={"type": "tool", "name": _TOOL_NAME},
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    "Extract structured fields from the following job description. "
-                    "If a recruiter/hiring manager name or email is not present, use null. "
-                    "List tech stack as short items (e.g. 'Python', 'AWS'). "
-                    "List responsibilities/requirements as concise bullet-style strings.\n\n"
-                    f"JOB DESCRIPTION:\n{raw_text}"
-                ),
-            }
-        ],
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=(
+            "Extract structured fields from the following job description. "
+            "If a recruiter/hiring manager name or email is not present, use null. "
+            "List tech stack as short items (e.g. 'Python', 'AWS'). "
+            "List responsibilities/requirements as concise bullet-style strings.\n\n"
+            f"JOB DESCRIPTION:\n{raw_text}"
+        ),
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=ParsedJob,
+        ),
     )
 
-    for block in response.content:
-        if block.type == "tool_use" and block.name == _TOOL_NAME:
-            return ParsedJob.model_validate(block.input)
-
-    raise RuntimeError("Claude did not return structured job data")
+    if response.parsed is None:
+        raise RuntimeError("Gemini did not return structured job data")
+    return response.parsed

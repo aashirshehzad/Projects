@@ -10,8 +10,8 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 MATCH_SCORE_THRESHOLD = int(os.getenv("MATCH_SCORE_THRESHOLD", "65"))
 
@@ -41,9 +41,9 @@ def require_google_oauth_client() -> tuple[str, str]:
     return GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
 
-def require_anthropic_key() -> str:
-    if not ANTHROPIC_API_KEY:
+def require_gemini_key() -> str:
+    if not GEMINI_API_KEY:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and fill it in."
+            "GEMINI_API_KEY is not set. Copy .env.example to .env and fill it in."
         )
-    return ANTHROPIC_API_KEY
+    return GEMINI_API_KEY
