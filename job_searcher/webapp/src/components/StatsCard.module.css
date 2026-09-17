@@ -1,0 +1,19 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px;
+}
+
+.value {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-forest);
+}
+
+.label {
+  font-size: 13px;
+  color: rgba(17, 24, 39, 0.6);
+  font-weight: 500;
+}

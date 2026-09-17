@@ -1,0 +1,79 @@
+.title {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.6);
+  margin-bottom: 24px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.tableCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 14px 20px;
+}
+
+.table thead {
+  background: rgba(6, 64, 51, 0.04);
+}
+
+.table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(17, 24, 39, 0.55);
+}
+
+.table tbody tr:not(:last-child) {
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pending {
+  background: rgba(226, 212, 248, 0.6);
+  color: var(--color-forest);
+}
+
+.applied {
+  background: rgba(6, 64, 51, 0.1);
+  color: var(--color-forest);
+}
+
+.rejected {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+
+@media (max-width: 700px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+}
