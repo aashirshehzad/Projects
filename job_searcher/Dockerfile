@@ -8,9 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# curl is only for the container HEALTHCHECK and manual debugging on the box.
+# curl is for the container HEALTHCHECK. poppler-utils (pdftoppm) and tesseract-ocr
+# back the PDF OCR fallback in backend/pdf_extract.py, for resumes whose fonts have
+# no real text layer (common with design-tool exports like Canva).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl poppler-utils tesseract-ocr \
  && rm -rf /var/lib/apt/lists/*
 
 # Dependencies first - this layer is cached until requirements.txt changes.
