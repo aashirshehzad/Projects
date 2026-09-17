@@ -1,7 +1,0 @@
-# Free public hostname for the bare EC2 IP (16.170.247.245) via nip.io's
-# wildcard DNS - resolves to the IP with no domain purchase needed. Google's
-# OAuth consent screen requires HTTPS to publish to Production, and won't
-# accept a bare IP as a redirect URI host at all, so this unblocks both.
-16-170-247-245.nip.io {
-	reverse_proxy web:8000
-}
