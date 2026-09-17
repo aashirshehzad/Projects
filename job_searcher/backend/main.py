@@ -1,34 +1,26 @@
-"""JobAgent web backend: multi-tenant FastAPI app.
+"""JobAgent backend: the OAuth callback the Discord bot's Gmail auth links redirect to,
+plus a bare static homepage/privacy page (both required for Google's OAuth consent screen).
 
-Each visitor is identified by an anonymous session cookie. Their uploaded
-resume, in-flight job analysis, and Gmail OAuth token are scoped to that
-session (see backend/db.py) - nothing is shared between visitors.
+There's no web UI here on purpose - the Discord bot (discord_bot/bot.py) is the product.
+It calls backend/db.py, backend/gmail_oauth.py, backend/job_fetcher.py, and
+backend/pdf_extract.py as plain Python imports, not over HTTP; this process only needs to
+exist because Google's OAuth redirect has to land on a real, publicly reachable web server.
 """
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend import db
-from backend.routers import gmail, jobs, profile
-from src.config import BASE_DIR, FRONTEND_URL, SESSION_COOKIE_NAME
+from backend.routers import gmail
+from src.config import BASE_DIR
 
-FRONTEND_DIST = Path(BASE_DIR) / "frontend" / "dist"
+STATIC_DIR = Path(BASE_DIR) / "backend" / "static"
 
-app = FastAPI(title="JobAgent API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="JobAgent")
 
 
 @app.on_event("startup")
@@ -36,31 +28,6 @@ async def on_startup() -> None:
     db.init_db()
 
 
-@app.middleware("http")
-async def session_middleware(request: Request, call_next):
-    session_id = request.cookies.get(SESSION_COOKIE_NAME)
-    is_new = session_id is None
-    if is_new:
-        session_id = str(uuid.uuid4())
-
-    request.state.session_id = session_id
-    db.ensure_session(session_id)
-
-    response = await call_next(request)
-
-    if is_new:
-        response.set_cookie(
-            SESSION_COOKIE_NAME,
-            session_id,
-            httponly=True,
-            samesite="lax",
-            max_age=60 * 60 * 24 * 30,
-        )
-    return response
-
-
-app.include_router(profile.router)
-app.include_router(jobs.router)
 app.include_router(gmail.router)
 
 
@@ -69,12 +36,14 @@ async def health():
     return {"status": "ok"}
 
 
-if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
-        return FileResponse(FRONTEND_DIST / "index.html")
+
+@app.get("/")
+async def homepage():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/privacy.html")
+async def privacy():
+    return FileResponse(STATIC_DIR / "privacy.html")

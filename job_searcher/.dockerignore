@@ -5,13 +5,7 @@ credentials/
 data/*.json
 data/*.pdf
 backend/data/*.db
-frontend/node_modules
-frontend/src
-frontend/public
-frontend/*.config.js
-frontend/package*.json
-frontend/index.html
-frontend/.env*
+backend/data/resumes/
 __pycache__
 *.pyc
 .venv

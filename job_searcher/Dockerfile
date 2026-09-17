@@ -17,15 +17,12 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Application code. frontend/dist is a pre-built static bundle (built locally
-# with `npm run build` and committed) - the box never runs Node/npm, which
-# matters on a 1 GB t3.micro. The web app and the Discord bot are multi-tenant
-# and read each user's own uploaded profile from the shared DB - the personal
-# data/profile.md (CLI only) is deliberately not baked into this image.
+# Application code. The Discord bot is multi-tenant and reads each user's own
+# uploaded resume from the shared DB - the personal data/profile.md (CLI only)
+# is deliberately not baked into this image.
 COPY src ./src
 COPY backend ./backend
 COPY discord_bot ./discord_bot
-COPY frontend/dist ./frontend/dist
 
 # Run unprivileged.
 RUN useradd --create-home --uid 10001 appuser \
