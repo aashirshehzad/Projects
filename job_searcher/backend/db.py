@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     profile_text TEXT,
     resume_file_path TEXT,
+    resume_file_name TEXT,
     current_job TEXT,
     current_match TEXT,
     current_draft TEXT,
@@ -56,11 +57,15 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(_SCHEMA)
-        # Idempotent migration for DBs created before resume_file_path existed.
-        try:
-            conn.execute("ALTER TABLE sessions ADD COLUMN resume_file_path TEXT")
-        except sqlite3.OperationalError:
-            pass  # column already exists
+        # Idempotent migrations for DBs created before these columns existed.
+        for ddl in (
+            "ALTER TABLE sessions ADD COLUMN resume_file_path TEXT",
+            "ALTER TABLE sessions ADD COLUMN resume_file_name TEXT",
+        ):
+            try:
+                conn.execute(ddl)
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
 
 def _now() -> str:

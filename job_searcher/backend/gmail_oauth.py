@@ -108,21 +108,32 @@ def refresh_if_needed(token_data: dict[str, Any]) -> tuple[dict[str, Any], bool]
     raise RuntimeError("Gmail authorization expired or invalid. Please reconnect Gmail.")
 
 
-def create_draft(token_data: dict[str, Any], email: EmailDraft, resume_path: str | None = None) -> str:
-    """Creates a Gmail draft using this session's stored credentials. Returns the draft ID."""
+def create_draft(
+    token_data: dict[str, Any],
+    email: EmailDraft,
+    resume_path: str | None = None,
+    resume_filename: str | None = None,
+) -> str:
+    """Creates a Gmail draft using this session's stored credentials. Returns the draft ID.
+
+    `resume_filename` is the name the attachment is shown with (e.g. "Aashir_CV.pdf") -
+    distinct from `resume_path`, which is wherever the file actually lives on disk
+    (an opaque, collision-safe internal name, not something to show a recruiter).
+    """
     creds = _dict_to_credentials(token_data)
     service = build("gmail", "v1", credentials=creds)
 
     resume_file = Path(resume_path) if resume_path else None
     if resume_file and resume_file.exists():
+        display_name = resume_filename or resume_file.name
         message = MIMEMultipart()
         message.attach(MIMEText(email.body))
 
-        content_type, _ = mimetypes.guess_type(str(resume_file))
+        content_type, _ = mimetypes.guess_type(display_name)
         maintype, subtype = (content_type or "application/octet-stream").split("/", 1)
         with open(resume_file, "rb") as f:
             attachment = MIMEApplication(f.read(), _subtype=subtype)
-        attachment.add_header("Content-Disposition", "attachment", filename=resume_file.name)
+        attachment.add_header("Content-Disposition", "attachment", filename=display_name)
         message.attach(attachment)
     else:
         message = MIMEText(email.body)

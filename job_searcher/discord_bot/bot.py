@@ -87,7 +87,11 @@ async def _handle_resume_upload(message: discord.Message, uid: str) -> None:
     resume_path.write_bytes(content)
 
     await asyncio.to_thread(
-        db.update_session, uid, profile_text=profile_text, resume_file_path=str(resume_path)
+        db.update_session,
+        uid,
+        profile_text=profile_text,
+        resume_file_path=str(resume_path),
+        resume_file_name=attachment.filename,
     )
 
     session = await asyncio.to_thread(db.get_session, uid)
@@ -117,6 +121,7 @@ async def _process_draft(channel: discord.abc.Messageable, uid: str, job: Parsed
     session = await asyncio.to_thread(db.get_session, uid)
     token_data = session.get("gmail_token") if session else None
     resume_path = session.get("resume_file_path") if session else None
+    resume_filename = session.get("resume_file_name") if session else None
 
     if not token_data:
         await channel.send("Gmail isn't connected. Send 'connect' to get a link.")
@@ -131,7 +136,9 @@ async def _process_draft(channel: discord.abc.Messageable, uid: str, job: Parsed
         return
 
     try:
-        draft_id = await asyncio.to_thread(gmail_oauth.create_draft, token_data, email, resume_path)
+        draft_id = await asyncio.to_thread(
+            gmail_oauth.create_draft, token_data, email, resume_path, resume_filename
+        )
         status = "draft_created"
     except RuntimeError as e:
         draft_id = None
